@@ -43,8 +43,8 @@ namespace σκοπός {
 
   public class GroundSegmentMutation : ContractBehaviour {
     public enum State {
-      OFFERED,
-      DECLINED,
+      CONTRACT_OFFERED,
+      CONTRACT_DECLINED,
     }
 
     public enum Operation {
@@ -88,13 +88,13 @@ namespace σκοπός {
 
     protected override void OnOffered() {
       base.OnOffered();
-      if (state_ == State.OFFERED) {
+      if (state_ == State.CONTRACT_OFFERED) {
         Behave();
       }
     }
 
     protected override void OnDeclined() {
-      if (state_ == State.DECLINED) {
+      if (state_ == State.CONTRACT_DECLINED) {
         Behave();
       }
     }

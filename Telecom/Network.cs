@@ -21,7 +21,7 @@ namespace σκοπός {
     }
 
     static ConfigNode GetStationDefinition(string name) {
-      foreach (var block in GameDatabase.Instance.GetConfigs("σκοπός_telecom")) {
+      foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
         foreach (var definition in block.config.GetNodes("station")) {
           if (definition.GetValue("name") == name) {
             return definition;
@@ -32,7 +32,7 @@ namespace σκοπός {
     }
 
     static ConfigNode GetCustomerDefinition(string name) {
-      foreach (var block in GameDatabase.Instance.GetConfigs("σκοπός_telecom")) {
+      foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
         foreach (var definition in block.config.GetNodes("customer")) {
           if (definition.GetValue("name") == name) {
             return definition;
@@ -43,7 +43,7 @@ namespace σκοπός {
     }
 
     static ConfigNode GetConnectionDefinition(string name) {
-      foreach (var block in GameDatabase.Instance.GetConfigs("σκοπός_telecom")) {
+      foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
         foreach (var definition in block.config.GetNodes("connection")) {
           if (definition.GetValue("name") == name) {
             return definition;

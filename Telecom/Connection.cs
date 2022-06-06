@@ -66,7 +66,9 @@ namespace σκοπός {
       foreach (var availability in daily_availability_) {
         node.AddValue("daily_availability", availability);
       }
-      node.AddValue("current_day", current_day_);
+      if (current_day_ != null) {
+        node.AddValue("current_day", current_day_);
+      }
       node.AddValue("day_fraction_within_sla", day_fraction_within_sla_);
       node.AddValue("day_fraction", day_fraction_);
       node.AddValue("active", active_);
@@ -75,7 +77,9 @@ namespace σκοπός {
     public void Load(ConfigNode node) {
       daily_availability_ =
         new LinkedList<double>(node.GetValues("daily_availability").Select(double.Parse));
-      current_day_ = double.Parse(node.GetValue("current_day"));
+      if (node.HasValue("current_day")) {
+        current_day_ = double.Parse(node.GetValue("current_day"));
+      }
       day_fraction_within_sla_ = double.Parse(node.GetValue("day_fraction_within_sla"));
       day_fraction_ = double.Parse(node.GetValue("day_fraction"));
       active_ = bool.Parse(node.GetValue("active"));
@@ -83,7 +87,9 @@ namespace σκοπός {
     }
 
     private void UpdateAvailability() {
-      availability = daily_availability_.Sum() / daily_availability_.Count;
+      availability = daily_availability_.Count == 0
+          ? 0
+          : daily_availability_.Sum() / daily_availability_.Count;
     }
 
     public double latency_threshold { get; }

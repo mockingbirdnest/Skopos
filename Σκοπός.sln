@@ -10,6 +10,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GameData", "GameData", "{EE6F834C-56A7-4C41-AE91-F8B842B47C6E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Skopos", "Skopos", "{C47AE9BB-1459-48C3-8B41-744EADEDEC4D}"
+	ProjectSection(SolutionItems) = preProject
+		GameData\Skopos\skopos_telecom_160.png = GameData\Skopos\skopos_telecom_160.png
+		GameData\Skopos\skopos_telecom_40.png = GameData\Skopos\skopos_telecom_40.png
+		GameData\Skopos\telecom.cfg = GameData\Skopos\telecom.cfg
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,6 +32,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C47AE9BB-1459-48C3-8B41-744EADEDEC4D} = {EE6F834C-56A7-4C41-AE91-F8B842B47C6E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C6B6B7DF-27A6-49F6-9304-53242146D834}
