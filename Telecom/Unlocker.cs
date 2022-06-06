@@ -24,12 +24,14 @@ namespace σκοπός {
     }
 
     private DateTime rss_epoch = new DateTime(1951, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-    private DateTime year_1962 = new DateTime(1962, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+    private DateTime start_of_campaign = new DateTime(1962, 1, 1, 12, 0, 0, DateTimeKind.Utc);
 
     private void FixedUpdate() {
       DateTime now = rss_epoch.AddSeconds(Planetarium.GetUniversalTime());
-      if (now < year_1962) {
-        TimeWarp.fetch.WarpTo((year_1962 - rss_epoch).TotalSeconds);
+      if (now < start_of_campaign) {
+        var next_week = now.AddDays(7);
+        var t = next_week < start_of_campaign ? next_week : start_of_campaign;
+        Planetarium.SetUniversalTime((t - rss_epoch).TotalSeconds);
       }
       bool facilities_maxed = true;
       foreach (var upgradeable in ScenarioUpgradeableFacilities.protoUpgradeables.Values) {
