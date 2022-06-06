@@ -109,6 +109,7 @@ namespace σκοπός {
         Telecom.Instance.network.RemoveCustomers(customers_);
         Telecom.Instance.network.RemoveConnections(connections_);
       }
+      Telecom.Instance.network.Refresh();
     }
 
     private Operation operation_;

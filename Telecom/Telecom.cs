@@ -34,9 +34,7 @@ namespace σκοπός {
     }
 
     private void FixedUpdate() {
-      if (HighLogic.LoadedScene != GameScenes.EDITOR) {
-        network?.Refresh();
-      }
+      network?.Refresh();
     }
 
     private void DrawWindow(int id) {
