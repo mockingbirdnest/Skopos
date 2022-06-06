@@ -44,6 +44,7 @@ namespace σκοπός {
       }
       if (!facilities_maxed) {
         ScenarioUpgradeableFacilities.Instance.CheatFacilities();
+        RealAntennas.RACommNetScenario.GroundStationTechLevel = RealAntennas.RACommNetScenario.MaxTL;
       }
       foreach (KerbalConstructionTime.KSCItem ksc
                in KerbalConstructionTime.KCTGameStates.KSCs) {
