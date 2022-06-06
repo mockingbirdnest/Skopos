@@ -90,10 +90,10 @@ namespace σκοπός {
 
     private void RebuildGraph() {
       int n = stations_.Count + customers_.Count;
-      connection_graph_ = new Edge[n, n];
+      ground_edges_ = new Edge[n, n];
       for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; ++j) {
-          connection_graph_[i, j] = new Edge();
+          ground_edges_[i, j] = new Edge();
         }
       }
       names_ = new string[n];
@@ -107,7 +107,7 @@ namespace σκοπός {
       foreach (var connection in connections_.Values) {
         int tx = names_.IndexOf(connection.tx_name);
         int rx = names_.IndexOf(connection.rx_name);
-        connection_graph_[tx, rx].monitors_.Add(connection);
+        ground_edges_[tx, rx].connections_.Add(connection);
       }
     }
 
@@ -120,7 +120,7 @@ namespace σκοπός {
         Log($"Adding station {name}");
         stations_.Add(name, null);
       }
-      connection_graph_ = null;
+      ground_edges_ = null;
     }
 
     RACommNetHome MakeStation(string name) {
@@ -162,7 +162,7 @@ namespace σκοπός {
         Log($"Adding customer {name}");
         customers_.Add(name, new Customer(GetCustomerDefinition(name), this));
       }
-      connection_graph_ = null;
+      ground_edges_ = null;
     }
     public void AddConnections(IEnumerable<string> names) {
       foreach (var name in names) {
@@ -173,7 +173,7 @@ namespace σκοπός {
         Log($"Adding connection {name}");
         connections_.Add(name, new Connection(GetConnectionDefinition(name)));
       }
-      connection_graph_ = null;
+      ground_edges_ = null;
     }
 
     public void RemoveStations(IEnumerable<string> names) { }
@@ -216,7 +216,7 @@ namespace σκοπός {
     }
 
     public void Refresh() {
-      if (connection_graph_ == null) {
+      if (ground_edges_ == null) {
         RebuildGraph();
       }
       bool all_stations_good = true;;
@@ -341,7 +341,7 @@ namespace σκοπός {
       for (int tx = 0; tx < all_ground_.Length; ++tx) {
         for (int rx = 0; rx < all_ground_.Length; ++rx) {
           if (rx == tx || !tx_.Contains(all_ground_[tx]) || !rx_.Contains(all_ground_[rx])) {
-            connection_graph_[tx, rx].AddMeasurement(double.NaN, double.NaN);
+            ground_edges_[tx, rx].AddMeasurement(double.NaN, double.NaN);
             continue;
           }
           var path = new CommNet.CommPath();
@@ -361,14 +361,10 @@ namespace σκοπός {
           if (path.IsEmpty()) {
             rate = 0;
           }
-          connection_graph_[tx, rx].AddMeasurement(rate: rate, latency: length / 299792458);
+          ground_edges_[tx, rx].AddMeasurement(rate: rate, latency: length / 299792458);
           min_rate_ = Math.Min(min_rate_, rate);
         }
       }
-    }
-
-    public Connection Monitor(string name) {
-      return connections_[name];
     }
 
     private class Customer {
@@ -561,13 +557,13 @@ namespace σκοπός {
       public void AddMeasurement(double latency, double rate) {
         current_latency = latency;
         current_rate = rate;
-        foreach (var monitor in monitors_) {
-          monitor.AddMeasurement(latency, rate, Planetarium.GetUniversalTime());
+        foreach (var connection in connections_) {
+          connection.AddMeasurement(latency, rate, Planetarium.GetUniversalTime());
         }
       }
       public double current_latency { get; private set; }
       public double current_rate { get; private set; }
-      public List<Connection> monitors_ = new List<Connection>();
+      public List<Connection> connections_ = new List<Connection>();
     }
 
     public Connection GetConnection(string name) {
@@ -597,7 +593,7 @@ namespace σκοπός {
     private readonly Random random_ = new Random();
     public readonly List<CommNet.CommLink> active_links_ = new List<CommNet.CommLink>();
     public RACommNetHome[] all_ground_ = { };
-    public Edge[,] connection_graph_ = { };
+    public Edge[,] ground_edges_ = { };
     public string[] names_ = { };
     public double min_rate_;
     public bool freeze_customers_;

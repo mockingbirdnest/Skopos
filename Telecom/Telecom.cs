@@ -77,8 +77,8 @@ namespace σκοπός {
               if (!network.rx_.Contains(network.all_ground_[rx])) {
                 continue;
               }
-              double rate = network.connection_graph_[tx, rx].current_rate;
-              double latency = network.connection_graph_[tx, rx].current_latency;
+              double rate = network.ground_edges_[tx, rx].current_rate;
+              double latency = network.ground_edges_[tx, rx].current_latency;
               UnityEngine.GUILayout.Label(
                 double.IsNaN(latency) || double.IsNaN(latency)
                   ? "—"

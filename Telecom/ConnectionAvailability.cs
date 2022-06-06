@@ -38,7 +38,7 @@ namespace σκοπός {
 
     protected override void OnUpdate() {
       base.OnUpdate();
-      var connection = Telecom.Instance.network.Monitor(connection_);
+      var connection = Telecom.Instance.network.GetConnection(connection_);
       if (connection.days >= connection.window &&
           connection.availability >= availability_) {
         SetComplete();
