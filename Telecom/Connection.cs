@@ -19,11 +19,14 @@ namespace σκοπός {
       double day = KSPUtil.dateTimeFormatter.Day;
       double t_in_days = t / day;
       double new_day = Math.Floor(t_in_days);
+      within_sla = latency <= latency_threshold && rate >= rate_threshold;
+      if (!active_) {
+        return;
+      }
       if (current_day_ == null) {
         current_day_ = new_day;
         return;
       }
-      within_sla = latency <= latency_threshold && rate >= rate_threshold;
 
       if (new_day > current_day_) {
         if (within_sla) {
@@ -49,6 +52,16 @@ namespace σκοπός {
       current_day_ = new_day;
     }
 
+    public void Activate() {
+      active_ = true;
+    }
+
+    public void Deactivate() {
+      daily_availability_.Clear();
+      current_day_ = null;
+      active_ = false;
+    }
+
     public void Serialize(ConfigNode node) {
       foreach (var availability in daily_availability_) {
         node.AddValue("daily_availability", availability);
@@ -56,6 +69,7 @@ namespace σκοπός {
       node.AddValue("current_day", current_day_);
       node.AddValue("day_fraction_within_sla", day_fraction_within_sla_);
       node.AddValue("day_fraction", day_fraction_);
+      node.AddValue("active", active_);
     }
 
     public void Load(ConfigNode node) {
@@ -64,6 +78,7 @@ namespace σκοπός {
       current_day_ = double.Parse(node.GetValue("current_day"));
       day_fraction_within_sla_ = double.Parse(node.GetValue("day_fraction_within_sla"));
       day_fraction_ = double.Parse(node.GetValue("day_fraction"));
+      active_ = bool.Parse(node.GetValue("active"));
       UpdateAvailability();
     }
 
@@ -87,5 +102,7 @@ namespace σκοπός {
     private double? current_day_;
     private double day_fraction_within_sla_;
     private double day_fraction_;
+
+    private bool active_;
   }
 }

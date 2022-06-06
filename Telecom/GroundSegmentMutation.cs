@@ -27,7 +27,6 @@ namespace σκοπός {
     private List<string> stations_;
     private List<string> customers_;
     private List<string> connections_;
-    private List<string> parameters_;
     private GroundSegmentMutation.State state_;
   }
 
@@ -52,12 +51,6 @@ namespace σκοπός {
       ADD,
       REMOVE,
     }
-
-    private Operation operation_;
-    private List<string> stations_;
-    private List<string> customers_;
-    private List<string> connections_;
-    private State state_;
 
     public GroundSegmentMutation() {}
 
@@ -117,5 +110,11 @@ namespace σκοπός {
         Telecom.Instance.network.RemoveConnections(connections_);
       }
     }
+
+    private Operation operation_;
+    private List<string> stations_;
+    private List<string> customers_;
+    private List<string> connections_;
+    private State state_;
   }
 }
