@@ -8,7 +8,7 @@ using Contracts;
 using RealAntennas;
 
 namespace σκοπός {
-  public class ConnectionAvailabilityFactory : ParameterFactory {
+  public abstract class ConnectionAvailabilityFactory : ParameterFactory {
     public override bool Load(ConfigNode node) {
       var ok = base.Load(node);
       ok &= ConfigNodeUtil.ParseValue<string>(node, "connection", x => connection_ = x, this);
@@ -16,34 +16,64 @@ namespace σκοπός {
       return ok;
     }
 
+    public abstract ConnectionAvailability.Goal Goal();
+
     public override ContractParameter Generate(Contract contract) {
-      return new ConnectionAvailability(connection_, availability_);
+      return new ConnectionAvailability(connection_, availability_, Goal());
     }
 
     private string connection_;
     private double availability_;
   }
 
+  public class AchieveConnectionAvailabilityFactory : ConnectionAvailabilityFactory {
+    public override ConnectionAvailability.Goal Goal() {
+      return ConnectionAvailability.Goal.ACHIEVE;
+    }
+  }
+
+  public class MaintainConnectionAvailabilityFactory : ConnectionAvailabilityFactory {
+    public override ConnectionAvailability.Goal Goal() {
+      return ConnectionAvailability.Goal.MAINTAIN;
+    }
+  }
+
   public class ConnectionAvailability : ContractParameter {
+    public enum Goal {
+      ACHIEVE,
+      MAINTAIN,
+    }
+
     public ConnectionAvailability() {
       title_tracker_ = new TitleTracker(this);
     }
 
-    public ConnectionAvailability(string connection, double availability) {
+    public ConnectionAvailability(string connection, double availability, Goal goal) {
       title_tracker_ = new TitleTracker(this);
       connection_ = connection;
       availability_ = availability;
+      goal_ = goal;
       disableOnStateChange = false;
     }
 
     protected override void OnUpdate() {
       base.OnUpdate();
       var connection = Telecom.Instance.network.GetConnection(connection_);
+      if (state == ParameterState.Failed) {
+        return;
+      }
       if (connection.days >= connection.window &&
           connection.availability >= availability_) {
         SetComplete();
       } else {
-        SetIncomplete();
+        switch (goal_) {
+          case Goal.ACHIEVE:
+            SetIncomplete();
+            break;
+          case Goal.MAINTAIN:
+            SetFailed();
+            break;
+        }
       }
       GetTitle();
     }
@@ -51,11 +81,13 @@ namespace σκοπός {
     protected override void OnLoad(ConfigNode node) {
       connection_ = node.GetValue("connection");
       availability_ = double.Parse(node.GetValue("availability"));
+      Enum.TryParse(node.GetValue("goal"), out goal_);
     }
 
     protected override void OnSave(ConfigNode node) {
       node.AddValue("connection", connection_);
       node.AddValue("availability", availability_);
+      node.AddValue("goal", goal_);
     }
 
     protected override string GetTitle() {
@@ -80,6 +112,7 @@ namespace σκοπός {
 
     private string connection_;
     private double availability_;
+    private Goal goal_;
     private string last_title_;
     private TitleTracker title_tracker_;
   }

@@ -9,9 +9,13 @@ namespace σκοπός {
   }
 
   public class BeforeDate : ContractRequirement {
-    public override void OnLoad(ConfigNode node) {
-      date_ = DateTime.Parse(node.GetValue("date"));
+    public override bool LoadFromConfig(ConfigNode node) {
+      bool ok = base.LoadFromConfig(node);
+      ok &= ConfigNodeUtil.ParseValue<DateTime>(node, "date", date => date_ = date, this);
+      return ok;
     }
+
+    public override void OnLoad(ConfigNode configNode) { }
 
     public override void OnSave(ConfigNode node) {
       node.AddValue("date", date_.ToString("O"));

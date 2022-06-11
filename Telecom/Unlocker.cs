@@ -27,6 +27,7 @@ namespace σκοπός {
 
     private void FixedUpdate() {
       DateTime now = RSS.current_time;
+      Funding.Instance.SetFunds(Math.Max(1e12, Funding.Instance.Funds), TransactionReasons.Cheating);
       if (now < start_of_campaign) {
         var next_week = now.AddDays(7);
         var t = next_week < start_of_campaign ? next_week : start_of_campaign;
