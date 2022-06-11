@@ -15,16 +15,16 @@ namespace σκοπός {
       ok &= ConfigNodeUtil.ParseValue<double>(node, "availability", x => availability_ = x, this);
       return ok;
     }
+
     public override ContractParameter Generate(Contract contract) {
       return new ConnectionAvailability(connection_, availability_);
     }
+
     private string connection_;
     private double availability_;
   }
 
   public class ConnectionAvailability : ContractParameter {
-    private string last_title_;
-    private TitleTracker title_tracker_;
     public ConnectionAvailability() {
       title_tracker_ = new TitleTracker(this);
     }
@@ -58,18 +58,6 @@ namespace σκοπός {
       node.AddValue("availability", availability_);
     }
 
-    protected override string GetMessageComplete() {
-      return "meow complete";
-    }
-
-    protected override string GetMessageIncomplete() {
-      return "meow incomplete";
-    }
-
-    protected override string GetMessageFailed() {
-      return "meow failed";
-    }
-
     protected override string GetTitle() {
       var connection = Telecom.Instance.network.GetConnection(connection_);
       var tx = Telecom.Instance.network.GetStation(connection.tx_name);
@@ -92,5 +80,7 @@ namespace σκοπός {
 
     private string connection_;
     private double availability_;
+    private string last_title_;
+    private TitleTracker title_tracker_;
   }
 }
