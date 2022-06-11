@@ -14,6 +14,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GameData", "GameData", "{EE
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Skopos", "Skopos", "{C47AE9BB-1459-48C3-8B41-744EADEDEC4D}"
 	ProjectSection(SolutionItems) = preProject
+		GameData\Skopos\skopos_telecom.png = GameData\Skopos\skopos_telecom.png
 		GameData\Skopos\skopos_telecom_160.png = GameData\Skopos\skopos_telecom_160.png
 		GameData\Skopos\skopos_telecom_40.png = GameData\Skopos\skopos_telecom_40.png
 		GameData\Skopos\telecom.cfg = GameData\Skopos\telecom.cfg

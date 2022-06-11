@@ -7,6 +7,7 @@ using RealAntennas;
 using RealAntennas.Network;
 using RealAntennas.MapUI;
 using RealAntennas.Targeting;
+using System.IO;
 
 namespace σκοπός {
   [KSPScenario(
@@ -21,16 +22,69 @@ namespace σκοπός {
     public override void OnLoad(ConfigNode node) {
       base.OnLoad(node);
       network = new Network(node.GetNode("network"));
+      node.SetValue("show", show_window_, createIfNotFound : true);
+      node.SetValue("x", window_.x, createIfNotFound : true);
+      node.SetValue("y", window_.y, createIfNotFound : true);
     }
 
     public override void OnSave(ConfigNode node) {
       base.OnSave(node);
       network.Serialize(node.AddNode("network"));
+      if (node.HasValue("show") && node.HasValue("x") && node.HasValue("y")) {
+        show_window_ = Convert.ToBoolean(node.GetValue("show"));
+        window_.x = Convert.ToSingle(node.GetValue("x"));
+        window_.y = Convert.ToSingle(node.GetValue("y"));
+      }
     }
 
     private void OnGUI() {
-      window_ = UnityEngine.GUILayout.Window(
-        GetHashCode(), window_, DrawWindow, "Σκοπός Telecom network overview");
+      if (KSP.UI.Screens.ApplicationLauncher.Ready && toolbar_button_ == null) {
+        LoadTextureIfExists(out UnityEngine.Texture toolbar_button_texture,
+                            "skopos_telecom.png");
+        toolbar_button_ =
+            KSP.UI.Screens.ApplicationLauncher.Instance.AddModApplication(
+                onTrue          : () => show_window_ = true,
+                onFalse         : () => show_window_ = false,
+                onHover         : null,
+                onHoverOut      : null,
+                onEnable        : null,
+                onDisable       : null,
+                visibleInScenes : KSP.UI.Screens.ApplicationLauncher.AppScenes.
+                    ALWAYS,
+                texture         : toolbar_button_texture);
+      }
+      // Make sure the state of the toolbar button remains consistent with the
+      // state of the window.
+      if (show_window_) {
+        toolbar_button_?.SetTrue(makeCall : false);
+      } else {
+        toolbar_button_?.SetFalse(makeCall : false);
+      }
+
+      if (show_window_) {
+        window_ = UnityEngine.GUILayout.Window(
+          GetHashCode(), window_, DrawWindow, "Σκοπός Telecom network overview");
+      }
+    }
+
+    private bool LoadTextureIfExists(out UnityEngine.Texture texture,
+                                     string path) {
+      string full_path =
+          KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar +
+          "GameData" + Path.DirectorySeparatorChar +
+          "Skopos" + Path.DirectorySeparatorChar +
+          path;
+      if (File.Exists(full_path)) {
+        var texture2d = new UnityEngine.Texture2D(2, 2);
+        UnityEngine.ImageConversion.LoadImage(
+            texture2d,
+            File.ReadAllBytes(full_path));
+        texture = texture2d;
+        return true;
+      } else {
+        texture = null;
+        return false;
+      }
     }
 
     private void FixedUpdate() {
@@ -39,16 +93,18 @@ namespace σκοπός {
 
     private void DrawWindow(int id) {
       using (new UnityEngine.GUILayout.VerticalScope()) {
-        using (new UnityEngine.GUILayout.HorizontalScope()) {
-          if (UnityEngine.GUILayout.Button("Add nominal location") && FlightGlobals.ActiveVessel != null) {
-            network.AddNominalLocation(FlightGlobals.ActiveVessel);
-            return;
+        if (false) {
+          using (new UnityEngine.GUILayout.HorizontalScope()) {
+            if (UnityEngine.GUILayout.Button("Add nominal location") && FlightGlobals.ActiveVessel != null) {
+              network.AddNominalLocation(FlightGlobals.ActiveVessel);
+              return;
+            }
+            if (UnityEngine.GUILayout.Button("Clear nominal locations")) {
+              network.ClearNominalLocations();
+              return;
+            }
+            network.freeze_customers_ = UnityEngine.GUILayout.Toggle(network.freeze_customers_, "Freeze customers");
           }
-          if (UnityEngine.GUILayout.Button("Clear nominal locations")) {
-            network.ClearNominalLocations();
-            return;
-          }
-          network.freeze_customers_ = UnityEngine.GUILayout.Toggle(network.freeze_customers_, "Freeze customers");
         }
         foreach (Vector3d location in network.GetNominalLocationLatLonAlts()) {
           UnityEngine.GUILayout.Label($"{location.x:F2}°, {location.y:F2}°, {location.z / 1000:F0} km");
@@ -97,6 +153,9 @@ namespace σκοπός {
           UnityEngine.GUILayout.Label(
             $@"{i + 1}: {role} {station.nodeName} {
               (antenna.Target == null ? "Tracking" : "Fixed")}");
+        }
+        if (network.space_segment_.Count > 0) {
+          UnityEngine.GUILayout.Label("Recent relays:");
         }
         foreach (var vessel_time in network.space_segment_) {
           double age_s = Planetarium.GetUniversalTime() - vessel_time.Value;
@@ -163,6 +222,8 @@ namespace σκοπός {
     public Network network { get; private set; }
     private bool show_network_ = true;
     private bool show_active_links_ = true;
+    private bool show_window_ = true;
     private UnityEngine.Rect window_;
+    private KSP.UI.Screens.ApplicationLauncherButton toolbar_button_;
   }
 }
