@@ -55,6 +55,6 @@ such a way as to allow only one economically viable solution.
 ## Historical notes
 
 An earlier iteration of this idea was implemented by
-[@SirMortimer](github.com/SirMortimer), first under the name of
+[@SirMortimer](https://github.com/SirMortimer), first under the name of
 KerbalismContracts, then under the name Σκοπός.
 
