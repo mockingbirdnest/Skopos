@@ -1,5 +1,5 @@
 # Σκοπός
-> ὁ **σκοπός, οῦ**: goal.
+> ὁ [**σκοπός, οῦ**](https://bailly.app/skopos): goal.
 
 KSP contracts that specify goals, and leave mission design to the player.
 
