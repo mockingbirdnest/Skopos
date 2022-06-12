@@ -9,8 +9,9 @@ The stock career mode, as well as modded careers inspired by the stock system,
 _e.g._, [RP-1](https://github.com/KSP-RO/RP-0), have some contracts focused on
 ultimate mission goals such as
 
-> achieving the goal, before this decade is out, of landing a man on the Moon
-> and returning him safely to the Earth
+> [achieving the goal, before this decade is out, of landing a man on the Moon
+> and returning him safely to the Earth](
+> https://www.youtube.com/watch?v=8ygoE2YiHCs&t=36s)
 
 which allow for many different mission profiles: direct ascent, earth orbit
 rendez-vous, lunar orbit rendez-vous, etc.
