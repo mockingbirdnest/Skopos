@@ -98,9 +98,13 @@ namespace σκοπός {
       double latency = connection.latency_threshold;
       string pretty_latency = latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
       string status = connection.within_sla ? "connected" : "disconnected";
+      bool window_full = connection.days == connection.window;
+      string window_text = window_full
+          ? $"over the last {connection.window} days"
+          : $"over {connection.days}/{connection.window} days";
       string title = $"Connect {tx.displaynodeName} to {rx.displaynodeName}:\n" +
              $"At least {data_rate}, with a latency of at most {pretty_latency} (currently {status})\n" +
-             $"{connection.availability:P1} availability (target: {availability_:P1}) over {connection.days}/{connection.window} days\n" +
+             $"{connection.availability:P1} availability (target: {availability_:P1}) {window_text}\n" +
              $"(Availability yesterday: {connection.availability_yesterday:P1})";
       title_tracker_.Add(title);
       if (last_title_ != title) {

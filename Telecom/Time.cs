@@ -22,7 +22,7 @@ namespace σκοπός {
     }
 
     public override bool RequirementMet(ConfiguredContract contractType) {
-      return RSS.current_time > date_;
+      return RSS.current_time < date_;
     }
 
     protected override string RequirementText() {
