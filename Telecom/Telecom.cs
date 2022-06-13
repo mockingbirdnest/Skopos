@@ -8,6 +8,7 @@ using RealAntennas.Network;
 using RealAntennas.MapUI;
 using RealAntennas.Targeting;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace σκοπός {
   [KSPScenario(
@@ -15,26 +16,37 @@ namespace σκοπός {
     new[] { GameScenes.SPACECENTER, GameScenes.TRACKSTATION, GameScenes.FLIGHT, GameScenes.EDITOR })]
   public sealed class Telecom : ScenarioModule {
 
+    public static void Log(string message,
+                           [CallerFilePath] string file = "",
+                           [CallerLineNumber] int line = 0) {
+      UnityEngine.Debug.Log($"[Σκοπός Telecom]: {message} ({file}:{line})");
+    }
+
     public Telecom() {
+      Log("Constructor");
       Instance = this;
     }
 
     public override void OnLoad(ConfigNode node) {
+      Log("OnLoad");
       base.OnLoad(node);
       network = new Network(node.GetNode("network"));
-      node.SetValue("show", show_window_, createIfNotFound : true);
-      node.SetValue("x", window_.x, createIfNotFound : true);
-      node.SetValue("y", window_.y, createIfNotFound : true);
+      if (node.HasNode("window")) {
+        var window = node.GetNode("window");
+        show_window_ = Convert.ToBoolean(window.GetValue("show"));
+        window_.x = Convert.ToSingle(window.GetValue("x"));
+        window_.y = Convert.ToSingle(window.GetValue("y"));
+      }
     }
 
     public override void OnSave(ConfigNode node) {
+      Log("OnSave");
       base.OnSave(node);
       network.Serialize(node.AddNode("network"));
-      if (node.HasValue("show") && node.HasValue("x") && node.HasValue("y")) {
-        show_window_ = Convert.ToBoolean(node.GetValue("show"));
-        window_.x = Convert.ToSingle(node.GetValue("x"));
-        window_.y = Convert.ToSingle(node.GetValue("y"));
-      }
+      var window = node.AddNode("window");
+      window.SetValue("show", show_window_, createIfNotFound : true);
+      window.SetValue("x", window_.x, createIfNotFound : true);
+      window.SetValue("y", window_.y, createIfNotFound : true);
     }
 
     private void OnGUI() {
@@ -64,6 +76,14 @@ namespace σκοπός {
       if (show_window_) {
         window_ = UnityEngine.GUILayout.Window(
           GetHashCode(), window_, DrawWindow, "Σκοπός Telecom network overview");
+      }
+    }
+
+    private void OnDisable() {
+      Log("OnDisable");
+      if (toolbar_button_ != null) {
+        KSP.UI.Screens.ApplicationLauncher.Instance.RemoveModApplication(
+            toolbar_button_);
       }
     }
 

@@ -13,13 +13,6 @@ using System.Threading.Tasks;
 
 namespace σκοπός {
   public class Network {
-
-    static void Log(string message,
-                    [CallerFilePath] string file = "",
-                    [CallerLineNumber] int line = 0) {
-      UnityEngine.Debug.Log($"[Σκοπός Telecom]: {message} ({file}:{line})");
-    }
-
     static ConfigNode GetStationDefinition(string name) {
       foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
         foreach (var definition in block.config.GetNodes("station")) {
@@ -114,10 +107,10 @@ namespace σκοπός {
     public void AddStations(IEnumerable<string> names) {
       foreach (var name in names) {
         if (stations_.ContainsKey(name)) {
-          Log($"Station {name} already present");
+          Telecom.Log($"Station {name} already present");
           continue;
         }
-        Log($"Adding station {name}");
+        Telecom.Log($"Adding station {name}");
         stations_.Add(name, null);
       }
       ground_edges_ = null;
@@ -136,8 +129,8 @@ namespace σκοπός {
       station_node.AddValue("isHome", false);
       station_node.AddValue("icon", "RealAntennas/radio-antenna");
       foreach (var antenna in node.GetNodes("Antenna")) {
-        Log($"antenna for {name}: {antenna}");
-        Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
+        Telecom.Log($"antenna for {name}: {antenna}");
+        Telecom.Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
         station_node.AddNode(antenna);
       }
       station.Configure(station_node, body);
@@ -156,10 +149,10 @@ namespace σκοπός {
       public void AddCustomers(IEnumerable<string> names) {
       foreach (var name in names) {
         if (customers_.ContainsKey(name)) {
-          Log($"Customer {name} already present");
+          Telecom.Log($"Customer {name} already present");
           continue;
         }
-        Log($"Adding customer {name}");
+        Telecom.Log($"Adding customer {name}");
         customers_.Add(name, new Customer(GetCustomerDefinition(name), this));
       }
       ground_edges_ = null;
@@ -167,10 +160,10 @@ namespace σκοπός {
     public void AddConnections(IEnumerable<string> names) {
       foreach (var name in names) {
         if (connections_.ContainsKey(name)) {
-          Log($"Connection {name} already present");
+          Telecom.Log($"Connection {name} already present");
           continue;
         }
-        Log($"Adding connection {name}");
+        Telecom.Log($"Adding connection {name}");
         connections_.Add(name, new Connection(GetConnectionDefinition(name)));
       }
       ground_edges_ = null;
@@ -223,19 +216,19 @@ namespace σκοπός {
       var station_names = stations_.Keys.ToArray();
       foreach (var name in station_names) {
         if (stations_[name] == null) {
-          Log($"Making station {name}");
+          Telecom.Log($"Making station {name}");
           stations_[name] = MakeStation(name);
         }
         if (stations_[name].Comm == null) {
-          Log($"null Comm for {name}");
+          Telecom.Log($"null Comm for {name}");
           all_stations_good = false;
         }
         string node_name = stations_[name].nodeName;
         if (!RACommNetScenario.GroundStations.ContainsKey(node_name)) {
-          Log($"{name} not in GroundStations at {node_name}");
+          Telecom.Log($"{name} not in GroundStations at {node_name}");
           RACommNetScenario.GroundStations.Add(node_name, stations_[name]);
         } else if (RACommNetScenario.GroundStations[node_name] != stations_[name]) {
-          Log($"{name} is not GroundStations[{node_name}]");
+          Telecom.Log($"{name} is not GroundStations[{node_name}]");
           UnityEngine.Object.DestroyImmediate(RACommNetScenario.GroundStations[node_name]);
           RACommNetScenario.GroundStations[node_name] = stations_[name];
         }
@@ -259,8 +252,8 @@ namespace σκοπός {
       foreach (var pair in stations_) {
         var station = pair.Value;
         if (station.Comm.RAAntennaList.Count == 0) {
-          Log($"No antenna for {pair.Key}");
-          Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
+          Telecom.Log($"No antenna for {pair.Key}");
+          Telecom.Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
         }
         station.Comm.RAAntennaList[0].Target = null;
       }
@@ -332,7 +325,7 @@ namespace σκοπός {
     private void UpdateConnections() {
       var network = CommNet.CommNetNetwork.Instance.CommNet as RACommNetwork;
       if (network == null) {
-        Log("No RA comm network");
+        Telecom.Log("No RA comm network");
         return;
       }
       all_ground_ = stations_.Values.Concat(from customer in customers_.Values select customer.station).ToArray();
