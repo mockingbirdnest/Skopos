@@ -324,7 +324,7 @@ namespace σκοπός {
 
     private void UpdateConnections() {
       var network = CommNet.CommNetNetwork.Instance.CommNet as RACommNetwork;
-      if (network == null) {
+      if (network == null || HighLogic.LoadedScene == GameScenes.EDITOR) {
         Telecom.Log("No RA comm network");
         return;
       }
