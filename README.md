@@ -30,7 +30,7 @@ that perturb the orbits.
 turned into goal-oriented contracts.
 
 For instance, instead of a contract to put a communications satellite in
-geostationary orbit over a specific latitude, the goal would be to provide a
+geostationary orbit over a specific longitude, the goal would be to provide a
 sustained transatlantic connection—by any means necessary, whether it be an MEO
 or LEO constellation or a single geosynchronous satellite.
 
