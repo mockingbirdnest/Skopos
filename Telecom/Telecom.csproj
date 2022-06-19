@@ -80,6 +80,7 @@
     <Compile Include="ConnectionActivation.cs" />
     <Compile Include="Connection.cs" />
     <Compile Include="ConnectionAvailability.cs" />
+    <Compile Include="ContractNotCompletedOnAcceptance.cs" />
     <Compile Include="GroundSegmentMutation.cs" />
     <Compile Include="Network.cs" />
     <Compile Include="Time.cs" />
