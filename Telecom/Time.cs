@@ -5,7 +5,7 @@ using Contracts;
 namespace σκοπός {
   public static class RSS {
     public static readonly DateTime epoch = new DateTime(1951, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-    public static DateTime current_time => epoch.AddSeconds(Planetarium.GetUniversalTime());
+    public static DateTime current_time => epoch.AddSeconds(Telecom.Instance.last_universal_time);
   }
 
   public class BeforeDate : ContractRequirement {

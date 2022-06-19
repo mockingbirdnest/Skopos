@@ -108,6 +108,10 @@ namespace σκοπός {
     }
 
     private void FixedUpdate() {
+      if (HighLogic.LoadedScene != GameScenes.EDITOR) {
+        // Time does not advance in the VAB, but after a revert, it is incorrectly stuck in the past.
+        ut_ = Planetarium.GetUniversalTime();
+      }
       network?.Refresh();
     }
 
@@ -178,7 +182,7 @@ namespace σκοπός {
           UnityEngine.GUILayout.Label("Recent relays:");
         }
         foreach (var vessel_time in network.space_segment_) {
-          double age_s = Planetarium.GetUniversalTime() - vessel_time.Value;
+          double age_s = Telecom.Instance.last_universal_time - vessel_time.Value;
           string age = null;
           if (age_s > 2 * KSPUtil.dateTimeFormatter.Day) {
             age = $"{age_s / KSPUtil.dateTimeFormatter.Day:F0} days ago";
@@ -244,6 +248,9 @@ namespace σκοπός {
     private bool show_active_links_ = true;
     private bool show_window_ = true;
     private UnityEngine.Rect window_;
+    public double last_universal_time => ut_;
+    [KSPField(isPersistant = true)]
+    private double ut_;
     private KSP.UI.Screens.ApplicationLauncherButton toolbar_button_;
   }
 }

@@ -324,7 +324,7 @@ namespace σκοπός {
 
     private void UpdateConnections() {
       var network = CommNet.CommNetNetwork.Instance.CommNet as RACommNetwork;
-      if (network == null || HighLogic.LoadedScene == GameScenes.EDITOR) {
+      if (network == null) {
         Telecom.Log("No RA comm network");
         return;
       }
@@ -348,7 +348,7 @@ namespace σκοπός {
             rate = Math.Min(rate, link.FwdDataRate);
             length += (l.a.position - l.b.position).magnitude;
             if ((l.end as RACommNode).ParentVessel is Vessel vessel) {
-              space_segment_[vessel] = Planetarium.GetUniversalTime();
+              space_segment_[vessel] = Telecom.Instance.last_universal_time;
             }
           }
           if (path.IsEmpty()) {
@@ -467,7 +467,7 @@ namespace σκοπός {
         current_latency = latency;
         current_rate = rate;
         foreach (var connection in connections_) {
-          connection.AddMeasurement(latency, rate, Planetarium.GetUniversalTime());
+          connection.AddMeasurement(latency, rate, Telecom.Instance.last_universal_time);
         }
       }
       public double current_latency { get; private set; }
