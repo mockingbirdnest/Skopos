@@ -77,4 +77,53 @@ namespace σκοπός {
 
     private DateTime date_;
   }
+
+  public class CompleteBeforeFactory : ParameterFactory {
+    public override bool Load(ConfigNode node) {
+      var ok = base.Load(node);
+      ok &= ConfigNodeUtil.ParseValue<DateTime>(node, "date", t => date_ = t, this);
+      return ok;
+    }
+
+    public override ContractParameter Generate(Contract contract) {
+      return new CompleteBefore(date_);
+    }
+
+    private DateTime date_;
+  }
+
+  public class CompleteBefore : ContractParameter {
+    public CompleteBefore() {}
+
+    public CompleteBefore(DateTime date) {
+      date_ = date;
+      disableOnStateChange = false;
+    }
+
+    protected override void OnUpdate() {
+      base.OnUpdate();
+      if (state == ParameterState.Failed) {
+        return;
+      }
+      if (RSS.current_time >= date_) {
+        SetFailed();
+      } else {
+        SetComplete();
+      }
+    }
+
+    protected override void OnLoad(ConfigNode node) {
+      date_ = DateTime.Parse(node.GetValue("date"));
+    }
+
+    protected override void OnSave(ConfigNode node) {
+      node.AddValue("date", date_.ToString("O"));
+    }
+
+    protected override string GetTitle() {
+      return $"Complete before {date_:s}";
+    }
+
+    private DateTime date_;
+  }
 }
