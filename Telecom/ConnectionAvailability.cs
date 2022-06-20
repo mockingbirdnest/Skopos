@@ -62,6 +62,9 @@ namespace σκοπός {
       if (state == ParameterState.Failed) {
         return;
       }
+      if (goal_ == Goal.MAINTAIN) {
+        connection.Monitor(availability_);
+      }
       if (connection.days >= connection.window &&
           connection.availability >= availability_) {
         SetComplete();
@@ -104,8 +107,13 @@ namespace σκοπός {
           : $"over {connection.days}/{connection.window} days";
       string title = $"Connect {tx.displaynodeName} to {rx.displaynodeName}:\n" +
              $"At least {data_rate}, with a latency of at most {pretty_latency} (currently {status})\n" +
-             $"{connection.availability:P1} availability (target: {availability_:P1}) {window_text}\n" +
-             $"(Availability yesterday: {connection.availability_yesterday:P1})";
+             $"{connection.availability:P1} availability (target: {availability_:P1}) {window_text}";
+      if (connection.days > connection.monitoring_window) {
+        title += '\n';
+        title += $@"(Availability over the last {
+            connection.monitoring_window} days: {
+            connection.monitored_availability:P1})";
+      }
       title_tracker_.Add(title);
       if (last_title_ != title) {
         title_tracker_.UpdateContractWindow(title);
