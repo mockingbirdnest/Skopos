@@ -62,7 +62,7 @@ namespace σκοπός {
       if (state == ParameterState.Failed) {
         return;
       }
-      if (goal_ == Goal.MAINTAIN) {
+      if (goal_ == Goal.MAINTAIN && state == ParameterState.Complete) {
         connection.Monitor(availability_);
       }
       if (connection.days >= connection.window &&
@@ -74,7 +74,14 @@ namespace σκοπός {
             SetIncomplete();
             break;
           case Goal.MAINTAIN:
-            SetFailed();
+            // Be lenient for the first day.  This means that for an
+            // auto-accepted maintenance contract, we penalize daily.
+            if (Telecom.Instance.last_universal_time - Root.DateAccepted >
+                KSPUtil.dateTimeFormatter.Day) {
+              SetFailed();
+            } else {
+              SetIncomplete();
+            }
             break;
         }
       }
