@@ -77,16 +77,19 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ConnectionActivation.cs" />
-    <Compile Include="Connection.cs" />
-    <Compile Include="ConnectionAvailability.cs" />
-    <Compile Include="ContractNotCompletedOnAcceptance.cs" />
-    <Compile Include="GroundSegmentMutation.cs" />
-    <Compile Include="Network.cs" />
-    <Compile Include="Time.cs" />
-    <Compile Include="Telecom.cs" />
+    <Compile Include="availability_metrics.cs" />
+    <Compile Include="connection.cs" />
+    <Compile Include="connection_activation.cs" />
+    <Compile Include="connection_availability.cs" />
+    <Compile Include="contract_not_completed_on_acceptance.cs" />
+    <Compile Include="ground_segment_mutation.cs" />
+    <Compile Include="monitoring.cs" />
+    <Compile Include="network.cs" />
+    <Compile Include="routing.cs" />
+    <Compile Include="time.cs" />
+    <Compile Include="telecom.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Unlocker.cs" />
+    <Compile Include="unlocker.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

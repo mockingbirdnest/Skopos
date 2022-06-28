@@ -62,28 +62,25 @@ namespace σκοπός {
       if (state == ParameterState.Failed) {
         return;
       }
-      if (goal_ == Goal.MAINTAIN && state == ParameterState.Complete) {
-        connection.Monitor(availability_);
-      }
-      if (connection.days >= connection.window &&
-          connection.availability >= availability_) {
-        SetComplete();
-      } else {
-        switch (goal_) {
-          case Goal.ACHIEVE:
+      switch (goal_) {
+        case Goal.ACHIEVE:
+          if (connection.days >= connection.window_size &&
+              connection.availability >= availability_) {
+            SetComplete();
+          } else {
             SetIncomplete();
-            break;
-          case Goal.MAINTAIN:
-            // Be lenient for the first day.  This means that for an
-            // auto-accepted maintenance contract, we penalize daily.
-            if (Telecom.Instance.last_universal_time - Root.DateAccepted >
-                KSPUtil.dateTimeFormatter.Day) {
-              SetFailed();
-            } else {
-              SetIncomplete();
-            }
-            break;
-        }
+          }
+          break;
+        case Goal.MAINTAIN:
+          DateTime date_accepted = RSS.epoch.AddSeconds(Root.DateAccepted);
+          var start_of_month = new DateTime(date_accepted.Year, date_accepted.Month, 1);
+          var end_of_month = start_of_month.AddMonths(1);
+          if (RSS.current_time < end_of_month) {
+            SetIncomplete();
+          } else {
+            connection
+          }
+          break;
       }
       GetTitle();
     }
@@ -104,14 +101,14 @@ namespace σκοπός {
       var connection = Telecom.Instance.network.GetConnection(connection_);
       var tx = Telecom.Instance.network.GetStation(connection.tx_name);
       var rx = Telecom.Instance.network.GetStation(connection.rx_name);
-      string data_rate = RATools.PrettyPrintDataRate(connection.rate_threshold);
+      string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
       double latency = connection.latency_threshold;
       string pretty_latency = latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
       string status = connection.within_sla ? "connected" : "disconnected";
-      bool window_full = connection.days == connection.window;
+      bool window_full = connection.days == connection.window_size;
       string window_text = window_full
-          ? $"over the last {connection.window} days"
-          : $"over {connection.days}/{connection.window} days";
+          ? $"over the last {connection.window_size} days"
+          : $"over {connection.days}/{connection.window_size} days";
       string title = $"Connect {tx.displaynodeName} to {rx.displaynodeName}:\n" +
              $"At least {data_rate}, with a latency of at most {pretty_latency} (currently {status})\n" +
              $"{connection.availability:P1} availability (target: {availability_:P1}) {window_text}";
