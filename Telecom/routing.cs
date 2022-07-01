@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using RealAntennas;
+using RealAntennas.Network;
 
 namespace σκοπός {
 
@@ -13,11 +14,16 @@ public class Routing {
     usage_.Clear();
   }
 
-  // Looks for the lowest-latency path that supports the requested connection.
-  // If that path exists, returns true and uses up the data rate on all links,
-  // setting |latency| to the latency of that path.
+  public class Route {
+    public readonly List<OrientedLink> links = new List<OrientedLink>();
+    public double latency;
+  }
+
+  // Looks for the lowest-latency paths that supports the requested connection.
+  // Reports these paths in |routes| and returns true if all necessary paths
+  // were found.
   // Otherwise, returns false, setting |latency| to positive infinity.
-  public bool Connect(Connection connection, out double latency) {
+  public bool FindRoute(Connection connection, out Route[] routes) {
     const double c = 299792458;
     // TODO(egg): consider using the stock intrusive data structure.
     var distances = new Dictionary<RACommNode, double>();
@@ -28,6 +34,8 @@ public class Routing {
     distances[connection.tx] = 0;
     boundary[0] = connection.tx;
     previous[connection.tx] = null;
+    int rx_found = 0;
+    routes = new Route[connection.rx.Count];
 
     while (boundary.Count > 0) {
       double tx_distance = boundary.First().Key;
@@ -36,23 +44,21 @@ public class Routing {
 
       if (tx_distance > connection.latency_threshold * c) {
         // We have run out of latency, no need to keep searching.
-        latency = double.PositiveInfinity;
         return false;
-      } else if (tx == connection.rx) {
-        // We have found a path.  Consume the data rate and return.
+      } else if (connection.rx.Contains(tx)) {
+        int i = connection.rx.IndexOf(tx);
+        routes[i] = new Route();
         for (OrientedLink link = previous[tx];
-             link != null;
-             link = previous[link.tx]) {
-          if (!usage_.TryGetValue(link.ra_link, out LinkUsage usage)) {
-            usage_.Add(link.ra_link, usage = new LinkUsage());
-          }
-          DirectedLinkUsage directed_usage = link.forward ? usage.forward
-                                                          : usage.backward;
-          directed_usage.data_rate -= connection.data_rate;
-          directed_usage.connections.Add(connection);
+            link != null;
+            link = previous[link.tx]) {
+           routes[i].links.Add(link);
         }
-        latency = tx_distance / c;
-        return true;
+        routes[i].links.Reverse();
+        routes[i].latency = tx_distance / c;
+        ++rx_found;
+        if (rx_found == routes.Length) {
+          return true;
+        }
       }
 
       interior.Add(tx);
@@ -95,7 +101,6 @@ public class Routing {
         previous[rx] = new OrientedLink(tx,rx,link, forward);
       }
     }
-    latency = double.PositiveInfinity;
     return false;
   }
 
@@ -109,7 +114,7 @@ public class Routing {
     public readonly List<Connection> connections = new List<Connection>();
   }
 
-  private class OrientedLink {
+  public class OrientedLink {
     public OrientedLink(RACommNode tx,
                         RACommNode rx,
                         RACommLink ra_link,
@@ -126,7 +131,8 @@ public class Routing {
     public bool forward;
   }
 
-  private Dictionary<RACommLink, LinkUsage> usage_;
+  private readonly Dictionary<RACommLink, LinkUsage> usage_ = new Dictionary<RACommLink, LinkUsage>();
+  private readonly Dictionary<RACommNode, Route> routes = new Dictionary<RACommNode, Route>();
 }
 
 }

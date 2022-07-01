@@ -462,19 +462,6 @@ namespace σκοπός {
       private Network network_;
     }
 
-    public class Edge {
-      public void AddMeasurement(double latency, double rate) {
-        current_latency = latency;
-        current_rate = rate;
-        foreach (var connection in connections_) {
-          connection.AddMeasurement(latency, rate, Telecom.Instance.last_universal_time);
-        }
-      }
-      public double current_latency { get; private set; }
-      public double current_rate { get; private set; }
-      public List<Connection> connections_ = new List<Connection>();
-    }
-
     public Connection GetConnection(string name) {
       return connections_[name];
     }
@@ -502,7 +489,6 @@ namespace σκοπός {
     private readonly Random random_ = new Random();
     public readonly List<CommNet.CommLink> active_links_ = new List<CommNet.CommLink>();
     public RACommNetHome[] all_ground_ = { };
-    public Edge[,] ground_edges_ = { };
     public string[] names_ = { };
     public double min_rate_;
     public bool freeze_customers_;
