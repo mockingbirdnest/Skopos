@@ -2,6 +2,7 @@
 using RealAntennas;
 using RealAntennas.Antenna;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace σκοπός {
 [TestClass]
@@ -90,6 +91,12 @@ public class RoutingTest {
         data_rate: 1,
         out Routing.Channel[] w_v),
         Routing.PointToMultipointAvailability.Available);
+    CollectionAssert.AreEqual(
+        (from link in v_w[0].links select link.rx).ToArray(),
+        new[]{x, y, w});
+    CollectionAssert.AreEqual(
+        (from link in w_v[0].links select link.rx).ToArray(),
+        new[]{x, y, v});
   }
 
   RACommNode MakeNode(double x, double y) {
