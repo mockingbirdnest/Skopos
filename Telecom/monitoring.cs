@@ -10,6 +10,7 @@ namespace σκοπός {
       if (alerted_availabilities_.Contains(availability)) {
         return;
       }
+      #if IT_COMPILES
       if (monitored_availability < availability) {
         alerted_availabilities_.Add(availability);
         var tx = Telecom.Instance.network.GetStation(tx_name);
@@ -35,6 +36,7 @@ namespace σκοπός {
                 KSP.UI.Screens.MessageSystemButton.MessageButtonColor.ORANGE,
                 KSP.UI.Screens.MessageSystemButton.ButtonIcons.ALERT));
       }
+      #endif
     }
 
     private HashSet<double> alerted_availabilities_ = new HashSet<double>();

@@ -56,6 +56,7 @@ namespace σκοπός {
       disableOnStateChange = false;
     }
 
+    #if IT_COMPILES
     protected override void OnUpdate() {
       base.OnUpdate();
       var connection = Telecom.Instance.network.GetConnection(connection_);
@@ -84,6 +85,7 @@ namespace σκοπός {
       }
       GetTitle();
     }
+    #endif
 
     protected override void OnLoad(ConfigNode node) {
       connection_ = node.GetValue("connection");
@@ -104,6 +106,8 @@ namespace σκοπός {
       string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
       double latency = connection.latency_threshold;
       string pretty_latency = latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
+
+      #if IT_COMPILES
       string status = connection.within_sla ? "connected" : "disconnected";
       bool window_full = connection.days == connection.window_size;
       string window_text = window_full
@@ -124,6 +128,9 @@ namespace σκοπός {
       }
       last_title_ = title;
       return title;
+      #else
+      return null;
+      #endif
     }
 
     private string connection_;

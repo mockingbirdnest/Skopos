@@ -83,10 +83,10 @@ namespace σκοπός {
 
     private void RebuildGraph() {
       int n = stations_.Count + customers_.Count;
-      ground_edges_ = new Edge[n, n];
+      //ground_edges_ = new Edge[n, n];
       for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; ++j) {
-          ground_edges_[i, j] = new Edge();
+          //ground_edges_[i, j] = new Edge();
         }
       }
       names_ = new string[n];
@@ -100,7 +100,7 @@ namespace σκοπός {
       foreach (var connection in connections_.Values) {
         int tx = names_.IndexOf(connection.tx_name);
         int rx = names_.IndexOf(connection.rx_name);
-        ground_edges_[tx, rx].connections_.Add(connection);
+        //ground_edges_[tx, rx].connections_.Add(connection);
       }
     }
 
@@ -113,7 +113,7 @@ namespace σκοπός {
         Telecom.Log($"Adding station {name}");
         stations_.Add(name, null);
       }
-      ground_edges_ = null;
+      //ground_edges_ = null;
     }
 
     RACommNetHome MakeStation(string name) {
@@ -155,7 +155,7 @@ namespace σκοπός {
         Telecom.Log($"Adding customer {name}");
         customers_.Add(name, new Customer(GetCustomerDefinition(name), this));
       }
-      ground_edges_ = null;
+      //ground_edges_ = null;
     }
     public void AddConnections(IEnumerable<string> names) {
       foreach (var name in names) {
@@ -166,7 +166,7 @@ namespace σκοπός {
         Telecom.Log($"Adding connection {name}");
         connections_.Add(name, new Connection(GetConnectionDefinition(name)));
       }
-      ground_edges_ = null;
+      //ground_edges_ = null;
     }
 
     public void RemoveStations(IEnumerable<string> names) { }
@@ -209,9 +209,9 @@ namespace σκοπός {
     }
 
     public void Refresh() {
-      if (ground_edges_ == null) {
-        RebuildGraph();
-      }
+      //if (ground_edges_ == null) {
+      //  RebuildGraph();
+      //}
       bool all_stations_good = true;;
       var station_names = stations_.Keys.ToArray();
       foreach (var name in station_names) {
@@ -334,7 +334,7 @@ namespace σκοπός {
       for (int tx = 0; tx < all_ground_.Length; ++tx) {
         for (int rx = 0; rx < all_ground_.Length; ++rx) {
           if (rx == tx || !tx_.Contains(all_ground_[tx]) || !rx_.Contains(all_ground_[rx])) {
-            ground_edges_[tx, rx].AddMeasurement(double.NaN, double.NaN);
+            //ground_edges_[tx, rx].AddMeasurement(double.NaN, double.NaN);
             continue;
           }
           var path = new CommNet.CommPath();
@@ -354,7 +354,7 @@ namespace σκοπός {
           if (path.IsEmpty()) {
             rate = 0;
           }
-          ground_edges_[tx, rx].AddMeasurement(rate: rate, latency: length / 299792458);
+          //ground_edges_[tx, rx].AddMeasurement(rate: rate, latency: length / 299792458);
           min_rate_ = Math.Min(min_rate_, rate);
         }
       }

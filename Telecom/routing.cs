@@ -382,7 +382,7 @@ public class Routing {
     public RAModulator modulator => lowest_tech_antenna.modulator;
     public RealAntennas.Antenna.Encoder encoder => lowest_tech_antenna.Encoder;
     // TODO(egg): this needs to be adapted once we have support for landlines.
-    public double length => (tx.position - tx.position).magnitude;
+    public double length => (tx.precisePosition - tx.precisePosition).magnitude;
 
     public double CapacityWithUsage(NetworkUsage usage) {
       double limiting_usage = Math.Max(usage.TxPowerUsage(tx_antenna),

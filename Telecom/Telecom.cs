@@ -157,14 +157,14 @@ namespace σκοπός {
               if (!network.rx_.Contains(network.all_ground_[rx])) {
                 continue;
               }
-              double rate = network.ground_edges_[tx, rx].current_rate;
-              double latency = network.ground_edges_[tx, rx].current_latency;
-              UnityEngine.GUILayout.Label(
-                double.IsNaN(latency) || double.IsNaN(latency)
-                  ? "—"
-                  : $"{RATools.PrettyPrintDataRate(rate)}\n" +
-                    $"{latency * 1000:F0} ms\n",
-                UnityEngine.GUILayout.Width(6 * 20));
+              //double rate = network.ground_edges_[tx, rx].current_rate;
+              //double latency = network.ground_edges_[tx, rx].current_latency;
+              //UnityEngine.GUILayout.Label(
+              //  double.IsNaN(latency) || double.IsNaN(latency)
+              //    ? "—"
+              //    : $"{RATools.PrettyPrintDataRate(rate)}\n" +
+              //      $"{latency * 1000:F0} ms\n",
+              //  UnityEngine.GUILayout.Width(6 * 20));
             }
           }
         }

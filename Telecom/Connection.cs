@@ -17,16 +17,20 @@ namespace σκοπός {
       latency_threshold = double.Parse(definition.GetValue("latency"));
       data_rate = double.Parse(definition.GetValue("rate"));
       window_size = int.Parse(definition.GetValue("window"));
+#if IT_COMPILES
       monitoring_window =  definition.HasValue("monitoring_window")
           ? int.Parse(definition.GetValue("monitoring_window"))
           : 2;
+#endif
     }
 
     public void AttemptConnection(Routing routing, double t) {
       double day = KSPUtil.dateTimeFormatter.Day;
       double t_in_days = t / day;
       double new_day = Math.Floor(t_in_days);
+#if IT_COMPILES
       connected = routing.Connect(this, latency: out _);
+#endif
       if (!active_) {
         return;
       }
@@ -81,16 +85,20 @@ namespace σκοπός {
       node.AddValue("day_fraction_connected", day_fraction_connected_);
       node.AddValue("day_fraction", day_fraction_);
       node.AddValue("active", active_);
+#if IT_COMPILES
       foreach (double availability in alerted_availabilities_) {
         node.AddValue("alerted_availability", availability);
       }
+#endif
     }
 
     public void Load(ConfigNode node) {
       daily_availability_ =
           new LinkedList<double>(node.GetValues("daily_availability").Select(double.Parse));
+#if IT_COMPILES
       alerted_availabilities_ = new HashSet<double>(
           node.GetValues("alerted_availability").Select(double.Parse));
+#endif
       if (node.HasValue("current_day")) {
         current_day_ = double.Parse(node.GetValue("current_day"));
       }
