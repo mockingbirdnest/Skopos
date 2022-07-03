@@ -18,15 +18,19 @@ public class Routing {
     Available,
   }
 
+  public Routing() {
+    current_network_usage_ = new RoutingNetworkUsage(this);
+  }
+
   public void Reset(IEnumerable<RACommNode> tx_only,
                     IEnumerable<RACommNode> rx_only,
                     IEnumerable<RACommNode> multiple_tracking_tx) {
     links_.Clear();
-    rx_spectrum_usage_.Clear();
-    tx_power_usage_.Clear();
+    current_network_usage_.Clear();
+
     tx_only_ = new HashSet<RACommNode>(tx_only);
     rx_only_ = new HashSet<RACommNode>(rx_only);
-    multiple_tracking_tx_ = new HashSet<RACommNode>(multiple_tracking_tx);
+    multiple_tracking_ = new HashSet<RACommNode>(multiple_tracking_tx);
   }
 
   public class Channel {
@@ -48,31 +52,33 @@ public class Routing {
       RACommNode source,
       RACommNode destination,
       double latency_limit,
-      double data_rate) {
+      double one_way_data_rate) {
     return FindCircuit(source,
                        destination,
                        latency_limit,
-                       data_rate,
-                       (link) => link.max_data_rate);
+                       one_way_data_rate,
+                       NetworkUsage.None);
   }
 
-  public Circuit ConsumeIfAvailable(
+  public Circuit UseIfAvailable(
       RACommNode source,
       RACommNode destination,
       double latency_limit,
-      double data_rate) {
+      double one_way_data_rate) {
     Circuit circuit = FindCircuit(
         source,
         destination,
         latency_limit,
-        data_rate,
-        (link) => link.available_capacity);
+        one_way_data_rate,
+        current_network_usage_);
     if (circuit != null) {
       foreach (OrientedLink link in circuit.forward.links) {
-        link.ConsumeCapacity(data_rate);
+        current_network_usage_.UseRx(link, one_way_data_rate);
+        current_network_usage_.UseTx(new[] {link}, one_way_data_rate);
       }
       foreach (OrientedLink link in circuit.backward.links) {
-        link.ConsumeCapacity(data_rate);
+        current_network_usage_.UseRx(link, one_way_data_rate);
+        current_network_usage_.UseTx(new[] {link}, one_way_data_rate);
       }
     }
     return circuit;
@@ -88,11 +94,11 @@ public class Routing {
                         destinations,
                         latency_limit,
                         data_rate,
-                        (link) => link.max_data_rate,
+                        NetworkUsage.None,
                         out channels);
   }
 
-  public PointToMultipointAvailability ConsumeIfAvailable(
+  public PointToMultipointAvailability UseIfAvailable(
       RACommNode source,
       RACommNode[] destinations,
       double latency_limit,
@@ -103,14 +109,17 @@ public class Routing {
         destinations,
         latency_limit,
         data_rate,
-        (link) => link.available_capacity,
+        current_network_usage_,
         out channels);
     if (availability != Unavailable) {
-      HashSet<OrientedLink> links_used =
-        (from channel in channels where channel != null
-         from link in channel.links select link).ToHashSet();
-      foreach (OrientedLink link in links_used) {
-        link.ConsumeCapacity(data_rate);
+      var links_by_tx_antenna = from channel in channels where channel != null
+                                from link in channel.links
+                                group link by link.tx_antenna;
+      foreach (var links in links_by_tx_antenna) {
+        current_network_usage_.UseTx(links, data_rate);
+        foreach (var link in links) {
+          current_network_usage_.UseRx(link, data_rate);
+        }
       }
     }
     return availability;
@@ -129,22 +138,11 @@ public class Routing {
                      out Channel[] forward) == Unavailable) {
       return null;
     }
-    var forward_tx_power_usage = forward[0].links.ToDictionary(
-        link => link.tx_antenna,
-        link => link.TxPowerUsageFromDataRate(one_way_data_rate));
-    var forward_rx_spectrum_usage = forward[0].links.ToDictionary(
-        link => link.rx_antenna,
-        link => link.RxSpectrumUsageFromDataRate(one_way_data_rate));
-    NetworkUsage usage_with_forward_channel = new NetworkUsage {
-      tx_power_usage = tx => {
-        forward_tx_power_usage.TryGetValue(tx, out double forward_usage);
-        return  usage.tx_power_usage(tx) + forward_usage;
-      },
-      rx_spectrum_usage = rx => {
-        forward_rx_spectrum_usage.TryGetValue(rx, out double forward_usage);
-        return  usage.rx_spectrum_usage(rx) + forward_usage;
-      }
-    };
+    var usage_with_forward_channel = new RoutingNetworkUsage(this, usage);
+    foreach (var link in forward[0].links) {
+      usage_with_forward_channel.UseRx(link, one_way_data_rate);
+      usage_with_forward_channel.UseTx(new[]{link}, one_way_data_rate);
+    }
     if (FindChannels(source,
                      new[]{destination},
                      one_way_latency_limit,
@@ -217,7 +215,7 @@ public class Routing {
         var link = OrientedLink.Get(this, from: tx, to: rx);
 
         if (is_point_to_multipoint &&
-            !multiple_tracking_tx_.Contains(tx) &&
+            !multiple_tracking_.Contains(tx) &&
             !link.is_at_tx_tech_level) {
           // DRVeyl says: RA kindly assumes higher-tech equipment can
           // automatically realize it should run an earlier encoding!
@@ -266,10 +264,84 @@ public class Routing {
   }
 
   public class NetworkUsage {
-    public delegate double TxPowerUsage(RealAntennaDigital tx);
-    public delegate double RxSpectrumUsage(RealAntennaDigital rx);
-    public TxPowerUsage tx_power_usage = _ => 0;
-    public RxSpectrumUsage rx_spectrum_usage = _ => 0;
+    public static NetworkUsage None = new NetworkUsage();
+    public virtual double TxPowerUsage(RealAntennaDigital tx) { return 0; }
+    public virtual double RxSpectrumUsage(RealAntennaDigital rx) { return 0; }
+    protected NetworkUsage() {}
+  }
+
+  private class RoutingNetworkUsage : NetworkUsage {
+    public RoutingNetworkUsage(Routing routing) {
+      routing_ = routing;
+    }
+
+    public RoutingNetworkUsage(Routing routing, NetworkUsage other) : this(routing) {
+      if (other is RoutingNetworkUsage nontrival) {
+        tx_power_usage_ =
+            new Dictionary<RealAntenna, double>(nontrival.tx_power_usage_);
+        rx_spectrum_usage_ =
+            new Dictionary<RealAntenna, double>(nontrival.rx_spectrum_usage_);
+      }
+    }
+
+    public void Clear() {
+      tx_power_usage_.Clear();
+      rx_spectrum_usage_.Clear();
+    }
+
+    public override double TxPowerUsage(RealAntennaDigital tx) {
+      tx_power_usage_.TryGetValue(tx, out double usage);
+      return usage;
+    }
+
+    public override double RxSpectrumUsage(RealAntennaDigital rx) { 
+      rx_spectrum_usage_.TryGetValue(rx, out double usage);
+      return usage;
+    }
+
+    // The links must all share the same tx antenna and tech level.
+    // Uses tx power corresponding to broadcast at the given data rate along
+    // all of these links (thus at the power needed for the weakest link).
+    public void UseTx(IEnumerable<OrientedLink> links, double data_rate) {
+      if (routing_.multiple_tracking_.Contains(links.First().tx)) {
+        return;
+      }
+      RealAntennaDigital tx_antenna = links.First().tx_antenna;
+      if (!tx_power_usage_.ContainsKey(tx_antenna)) {
+        tx_power_usage_.Add(tx_antenna, 0);
+      }
+      tx_power_usage_[tx_antenna] +=
+          (from link in links
+           select link.TxPowerUsageFromDataRate(data_rate)).Max();
+#if DEBUG
+      var antennas = from link in links select link.tx_antenna;
+      if (antennas.Any(tx => tx != tx_antenna)) {
+        throw new ArgumentException("Broadcast from multiple antennas");
+      }
+      int tech_level = links.First().tech_level;
+      var tech_levels = from link in links select link.tech_level;
+      if (tech_levels.Any(tl => tl != tech_level)) {
+        throw new ArgumentException("Broadcast at multiple tech levels");
+      }
+#endif
+    }
+
+    public void UseRx(OrientedLink link, double data_rate) {
+      if (routing_.multiple_tracking_.Contains(link.rx)) {
+        return;
+      }
+      if (!rx_spectrum_usage_.ContainsKey(link.rx_antenna)) {
+        rx_spectrum_usage_.Add(link.rx_antenna, 0);
+      }
+      rx_spectrum_usage_[link.rx_antenna] +=
+          link.RxSpectrumUsageFromDataRate(data_rate);
+    }
+
+    private readonly Dictionary<RealAntenna, double> tx_power_usage_ =
+        new Dictionary<RealAntenna, double>();
+    private readonly Dictionary<RealAntenna, double> rx_spectrum_usage_ =
+        new Dictionary<RealAntenna, double>();
+    private Routing routing_;
   }
 
   public class OrientedLink {
@@ -301,6 +373,8 @@ public class Routing {
                                            : ra_link.RevDataRate;
     public int tech_level => Math.Min(tx_antenna.TechLevelInfo.Level,
                                       rx_antenna.TechLevelInfo.Level);
+    // TODO(egg): we only care about encoding and modulation; TL 3 and 4 have the same
+    // and should be allowed to communicate.
     public bool is_at_tx_tech_level =>
         tech_level == tx_antenna.TechLevelInfo.Level;
     public RealAntennaDigital lowest_tech_antenna => 
@@ -311,8 +385,8 @@ public class Routing {
     public double length => (tx.position - tx.position).magnitude;
 
     public double CapacityWithUsage(NetworkUsage usage) {
-      double limiting_usage = Math.Max(usage.tx_power_usage(tx_antenna),
-                                       usage.rx_spectrum_usage(rx_antenna));
+      double limiting_usage = Math.Max(usage.TxPowerUsage(tx_antenna),
+                                       usage.RxSpectrumUsage(rx_antenna));
       return max_data_rate * (1 - limiting_usage);
     }
 
@@ -321,7 +395,7 @@ public class Routing {
     }
 
     public double RxSpectrumUsageFromDataRate(double data_rate) {
-      return data_rate / max_data_rate;
+      return data_rate / max_data_rate * max_bandwidth / rx_antenna.RFBand.ChannelWidth;
     }
 
     private OrientedLink(RACommNode tx,
@@ -342,31 +416,20 @@ public class Routing {
 
     private readonly Routing routing_;
   }
-  
-  public double TxUsage(RealAntenna antenna) {
-    tx_power_usage_.TryGetValue(antenna, out double usage);
-    return usage;
-  }
 
-  public double RxUsage(RealAntenna antenna) {
-    rx_spectrum_usage_.TryGetValue(antenna, out double usage);
-    return usage;
-  }
+  private readonly RoutingNetworkUsage current_network_usage_;
 
   private readonly Dictionary<(RACommNode, RACommNode), OrientedLink> links_ =
       new Dictionary<(RACommNode, RACommNode), OrientedLink>();
-  private readonly Dictionary<RealAntenna, double> rx_spectrum_usage_ =
-      new Dictionary<RealAntenna, double>();
-  private readonly Dictionary<RealAntenna, double> tx_power_usage_ =
-      new Dictionary<RealAntenna, double>();
+
   // Stations only capable of transmitting.
   private HashSet<RACommNode> tx_only_ = new HashSet<RACommNode>();
   // Station only capable of receiving.
   private HashSet<RACommNode> rx_only_ = new HashSet<RACommNode>();
   // Station modelled as capable of tracking multiple targets simultaneously,
   // so that each of its antennas really represents multiple independent
-  // antennas.  Their transmitted power does not get used up.
-  private HashSet<RACommNode> multiple_tracking_tx_ = new HashSet<RACommNode>();
+  // antennas.  Neither their transmitted power nor their spectrum get used up.
+  private HashSet<RACommNode> multiple_tracking_ = new HashSet<RACommNode>();
 }
 
 }

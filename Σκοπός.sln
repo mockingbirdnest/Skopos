@@ -20,6 +20,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Skopos", "Skopos", "{C47AE9
 		GameData\Skopos\telecom.cfg = GameData\Skopos\telecom.cfg
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TelecomTests", "TelecomTests\TelecomTests.csproj", "{3109DFF2-12C5-4DAF-8196-6094DD91B4B9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,6 +32,10 @@ Global
 		{C56AE65D-F12B-46DF-AD6A-36862A047DB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C56AE65D-F12B-46DF-AD6A-36862A047DB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C56AE65D-F12B-46DF-AD6A-36862A047DB0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3109DFF2-12C5-4DAF-8196-6094DD91B4B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3109DFF2-12C5-4DAF-8196-6094DD91B4B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3109DFF2-12C5-4DAF-8196-6094DD91B4B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3109DFF2-12C5-4DAF-8196-6094DD91B4B9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
