@@ -1,10 +1,18 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RealAntennas;
 using RealAntennas.Antenna;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace σκοπός {
+
+public static class TestingExtensions {
+  public static RealAntennaDigital FirstDigitalAntenna(this RACommNode node) {
+    return (RealAntennaDigital)node.RAAntennaList[0];
+  }
+}
+
 [TestClass]
 public class RoutingTest {
   [TestInitialize]
@@ -64,46 +72,91 @@ public class RoutingTest {
     // v   ↓  w
     //   ↖   ↗
     //     y
-    var v = MakeNode(-1, 0);
-    var w = MakeNode(+1, 0);
-    var x = MakeNode(0, +1);
-    var y = MakeNode(0, -1);
-    Connect(v, x, 1, 0);
-    Connect(v, y, 0, 1);
-    Connect(w, x, 1, 0);
-    Connect(w, y, 0, 1);
-    Connect(x, y, 1, 0);
-    Assert.IsNull(routing_.AvailabilityInIsolation(
+    var v = MakeNode("v", -1, 0);
+    var w = MakeNode("w", +1, 0);
+    var x = MakeNode("x", 0, +1);
+    var y = MakeNode("y", 0, -1);
+    // We have 1 Mbps against the arrows, which is too small to be relevant
+    // for the connections requested.
+    Connect(v, x, 20e6, 1e6);
+    Connect(v, y, 1e6, 20e6);
+    Connect(w, x, 20e6, 1e6);
+    Connect(w, y, 1e6, 20e6);
+    Connect(x, y, 20e6, 1e6);
+    // We cannot get a circuit at 20 Mbps.
+    Assert.IsNull(routing_.UseIfAvailable(
         v, w,
         latency_limit: double.PositiveInfinity,
-        one_way_data_rate: 1));
-    Assert.AreEqual(routing_.AvailabilityInIsolation(
-        source: v, 
-        destinations: new[] {w},
-        latency_limit: double.PositiveInfinity,
-        data_rate: 1,
-        out Routing.Channel[] v_w),
-        Routing.PointToMultipointAvailability.Available);
-    Assert.AreEqual(routing_.AvailabilityInIsolation(
-        source: w,
-        destinations: new[] {v},
-        latency_limit: double.PositiveInfinity,
-        data_rate: 1,
-        out Routing.Channel[] w_v),
-        Routing.PointToMultipointAvailability.Available);
+        one_way_data_rate: 20e6));
+
+    // But we could have simplex at 20 Mbps.
+    Assert.AreEqual(
+        Routing.PointToMultipointAvailability.Available,
+        routing_.AvailabilityInIsolation(source: v,
+                                         destinations: new[] {w},
+                                         latency_limit: double.PositiveInfinity,
+                                         data_rate: 20e6,
+                                         out Routing.Channel[] v_w));
+    Assert.AreEqual(
+        Routing.PointToMultipointAvailability.Available,
+        routing_.AvailabilityInIsolation(source: w,
+                                         destinations: new[] {v},
+                                         latency_limit: double.PositiveInfinity,
+                                         data_rate: 20e6,
+                                         out Routing.Channel[] w_v));
     CollectionAssert.AreEqual(
         (from link in v_w[0].links select link.rx).ToArray(),
         new[]{x, y, w});
     CollectionAssert.AreEqual(
         (from link in w_v[0].links select link.rx).ToArray(),
         new[]{x, y, v});
+
+    // We can get a circuit at 10 Mbps.
+    Routing.Circuit circuit = routing_.UseIfAvailable(
+        v, w,
+        latency_limit: double.PositiveInfinity,
+        one_way_data_rate: 10e6);
+    Assert.IsNotNull(circuit);
+    CollectionAssert.AreEqual(
+        (from link in circuit.forward.links select link.rx).ToArray(),
+        new[]{x, y, w});
+    CollectionAssert.AreEqual(
+        (from link in circuit.backward.links select link.rx).ToArray(),
+        new[]{x, y, v});
+
+    // We are using half of the power of v and w, since at full power they could
+    // transmit at 20 Mbps to x.
+    Assert.AreEqual(0.5,
+                    routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
+    Assert.AreEqual(0.5,
+                    routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
+    // We are using all of the power of x, since that is what it takes to
+    // transmit to y at 20 Mbps.
+    Assert.AreEqual(1.0,
+                    routing_.usage.TxPowerUsage(x.FirstDigitalAntenna()));
+    // We using all of the power of y, we are using half of its full-power data
+    // rate to both v and w.
+    Assert.AreEqual(1.0,
+                    routing_.usage.TxPowerUsage(x.FirstDigitalAntenna()));
+    // Plenty of room left in C band though.
+    // TODO(egg): Readable assertions.
+    Assert.AreEqual(0.0032552083333333335,
+                    routing_.usage.RxSpectrumUsage(x.FirstDigitalAntenna()));
+    Assert.AreEqual(0.0032552083333333335,
+                    routing_.usage.RxSpectrumUsage(y.FirstDigitalAntenna()));
+    // Even more room at v and w.
+    Assert.AreEqual(0.0032552083333333335 / 2,
+                    routing_.usage.RxSpectrumUsage(v.FirstDigitalAntenna()));
+    Assert.AreEqual(0.0032552083333333335 / 2,
+                    routing_.usage.RxSpectrumUsage(w.FirstDigitalAntenna()));
   }
 
-  RACommNode MakeNode(double x, double y) {
+  RACommNode MakeNode(string name, double x, double y) {
     RACommNode node = new RACommNode();
+    node.name = name;
     node.precisePosition = new Vector3d(x, y, 0);
     node.RAAntennaList = new List<RealAntenna>();
-    RealAntennaDigital antenna = new RealAntennaDigital();
+    RealAntennaDigital antenna = new RealAntennaDigital($"{name} C-band horn");
     var antenna_config = new ConfigNode();
     antenna_config.AddValue("TechLevel", "3");
     antenna_config.AddValue("RFBand", "C");

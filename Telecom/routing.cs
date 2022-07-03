@@ -18,21 +18,6 @@ public class Routing {
     Available,
   }
 
-  public Routing() {
-    current_network_usage_ = new RoutingNetworkUsage(this);
-  }
-
-  public void Reset(IEnumerable<RACommNode> tx_only,
-                    IEnumerable<RACommNode> rx_only,
-                    IEnumerable<RACommNode> multiple_tracking_tx) {
-    links_.Clear();
-    current_network_usage_.Clear();
-
-    tx_only_ = new HashSet<RACommNode>(tx_only);
-    rx_only_ = new HashSet<RACommNode>(rx_only);
-    multiple_tracking_ = new HashSet<RACommNode>(multiple_tracking_tx);
-  }
-
   public class Channel {
     public readonly List<OrientedLink> links = new List<OrientedLink>();
     public double latency;
@@ -47,6 +32,29 @@ public class Routing {
       this.backward = backward;
     }
   }
+
+  public class NetworkUsage {
+    public static NetworkUsage None = new NetworkUsage();
+    public virtual double TxPowerUsage(RealAntennaDigital tx) { return 0; }
+    public virtual double RxSpectrumUsage(RealAntennaDigital rx) { return 0; }
+    protected NetworkUsage() {}
+  }
+
+  public Routing() {
+    current_network_usage_ = new RoutingNetworkUsage(this);
+  }
+
+  public void Reset(IEnumerable<RACommNode> tx_only,
+                    IEnumerable<RACommNode> rx_only,
+                    IEnumerable<RACommNode> multiple_tracking_tx) {
+    links_.Clear();
+    current_network_usage_.Clear();
+
+    tx_only_ = new HashSet<RACommNode>(tx_only);
+    rx_only_ = new HashSet<RACommNode>(rx_only);
+    multiple_tracking_ = new HashSet<RACommNode>(multiple_tracking_tx);
+  }
+  public NetworkUsage usage => current_network_usage_;
 
   public Circuit AvailabilityInIsolation(
       RACommNode source,
@@ -143,8 +151,8 @@ public class Routing {
       usage_with_forward_channel.UseRx(link, one_way_data_rate);
       usage_with_forward_channel.UseTx(new[]{link}, one_way_data_rate);
     }
-    if (FindChannels(source,
-                     new[]{destination},
+    if (FindChannels(destination,
+                     new[]{source},
                      one_way_latency_limit,
                      one_way_data_rate,
                      usage_with_forward_channel,
@@ -263,13 +271,6 @@ public class Routing {
     public readonly List<Connection> connections = new List<Connection>();
   }
 
-  public class NetworkUsage {
-    public static NetworkUsage None = new NetworkUsage();
-    public virtual double TxPowerUsage(RealAntennaDigital tx) { return 0; }
-    public virtual double RxSpectrumUsage(RealAntennaDigital rx) { return 0; }
-    protected NetworkUsage() {}
-  }
-
   private class RoutingNetworkUsage : NetworkUsage {
     public RoutingNetworkUsage(Routing routing) {
       routing_ = routing;
@@ -310,9 +311,9 @@ public class Routing {
       if (!tx_power_usage_.ContainsKey(tx_antenna)) {
         tx_power_usage_.Add(tx_antenna, 0);
       }
-      tx_power_usage_[tx_antenna] +=
-          (from link in links
-           select link.TxPowerUsageFromDataRate(data_rate)).Max();
+      double usage = (from link in links 
+                      select link.TxPowerUsageFromDataRate(data_rate)).Max();
+      tx_power_usage_[tx_antenna] += usage;
 #if DEBUG
       var antennas = from link in links select link.tx_antenna;
       if (antennas.Any(tx => tx != tx_antenna)) {
