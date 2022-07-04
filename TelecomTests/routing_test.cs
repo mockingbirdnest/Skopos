@@ -138,17 +138,23 @@ public class RoutingTest {
     // rate to both v and w.
     Assert.AreEqual(1.0,
                     routing_.usage.TxPowerUsage(x.FirstDigitalAntenna()));
+    double bandwidth = BandInfo.All["C"].ChannelWidth;
     // Plenty of room left in C band though.
-    // TODO(egg): Readable assertions.
-    Assert.AreEqual(0.0032552083333333335,
-                    routing_.usage.RxSpectrumUsage(x.FirstDigitalAntenna()));
-    Assert.AreEqual(0.0032552083333333335,
-                    routing_.usage.RxSpectrumUsage(y.FirstDigitalAntenna()));
-    // Even more room at v and w.
-    Assert.AreEqual(0.0032552083333333335 / 2,
-                    routing_.usage.RxSpectrumUsage(v.FirstDigitalAntenna()));
-    Assert.AreEqual(0.0032552083333333335 / 2,
-                    routing_.usage.RxSpectrumUsage(w.FirstDigitalAntenna()));
+    // At this tech level we are using 1 Hz per bps, so 20 MHz at v and w
+    // (10 MHz each from the uplink and downlink).
+    Assert.AreEqual(
+        20e6,
+        routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()) * bandwidth);
+    Assert.AreEqual(
+        20e6,
+        routing_.usage.SpectrumUsage(w.FirstDigitalAntenna()) * bandwidth);
+    // Plenty of room even at x and y, though it is a little more crowded.
+    Assert.AreEqual(
+        40e6,
+        routing_.usage.SpectrumUsage(x.FirstDigitalAntenna()) * bandwidth);
+    Assert.AreEqual(
+        40e6,
+        routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()) * bandwidth);
   }
 
   RACommNode MakeNode(string name, double x, double y) {

@@ -36,7 +36,7 @@ public class Routing {
   public class NetworkUsage {
     public static NetworkUsage None = new NetworkUsage();
     public virtual double TxPowerUsage(RealAntennaDigital tx) { return 0; }
-    public virtual double RxSpectrumUsage(RealAntennaDigital rx) { return 0; }
+    public virtual double SpectrumUsage(RealAntennaDigital trx) { return 0; }
     protected NetworkUsage() {}
   }
 
@@ -81,12 +81,10 @@ public class Routing {
         current_network_usage_);
     if (circuit != null) {
       foreach (OrientedLink link in circuit.forward.links) {
-        current_network_usage_.UseRx(link, one_way_data_rate);
-        current_network_usage_.UseTx(new[] {link}, one_way_data_rate);
+        current_network_usage_.UseLinks(new[] {link}, one_way_data_rate);
       }
       foreach (OrientedLink link in circuit.backward.links) {
-        current_network_usage_.UseRx(link, one_way_data_rate);
-        current_network_usage_.UseTx(new[] {link}, one_way_data_rate);
+        current_network_usage_.UseLinks(new[] {link}, one_way_data_rate);
       }
     }
     return circuit;
@@ -124,10 +122,7 @@ public class Routing {
                                 from link in channel.links
                                 group link by link.tx_antenna;
       foreach (var links in links_by_tx_antenna) {
-        current_network_usage_.UseTx(links, data_rate);
-        foreach (var link in links) {
-          current_network_usage_.UseRx(link, data_rate);
-        }
+        current_network_usage_.UseLinks(links, data_rate);
       }
     }
     return availability;
@@ -148,8 +143,7 @@ public class Routing {
     }
     var usage_with_forward_channel = new RoutingNetworkUsage(this, usage);
     foreach (var link in forward[0].links) {
-      usage_with_forward_channel.UseRx(link, one_way_data_rate);
-      usage_with_forward_channel.UseTx(new[]{link}, one_way_data_rate);
+      usage_with_forward_channel.UseLinks(new[]{link}, one_way_data_rate);
     }
     if (FindChannels(destination,
                      new[]{source},
@@ -280,14 +274,14 @@ public class Routing {
       if (other is RoutingNetworkUsage nontrival) {
         tx_power_usage_ =
             new Dictionary<RealAntenna, double>(nontrival.tx_power_usage_);
-        rx_spectrum_usage_ =
-            new Dictionary<RealAntenna, double>(nontrival.rx_spectrum_usage_);
+        spectrum_usage_ =
+            new Dictionary<RealAntenna, double>(nontrival.spectrum_usage_);
       }
     }
 
     public void Clear() {
       tx_power_usage_.Clear();
-      rx_spectrum_usage_.Clear();
+      spectrum_usage_.Clear();
     }
 
     public override double TxPowerUsage(RealAntennaDigital tx) {
@@ -295,15 +289,22 @@ public class Routing {
       return usage;
     }
 
-    public override double RxSpectrumUsage(RealAntennaDigital rx) { 
-      rx_spectrum_usage_.TryGetValue(rx, out double usage);
+    public override double SpectrumUsage(RealAntennaDigital rx) { 
+      spectrum_usage_.TryGetValue(rx, out double usage);
       return usage;
     }
 
     // The links must all share the same tx antenna and tech level.
     // Uses tx power corresponding to broadcast at the given data rate along
     // all of these links (thus at the power needed for the weakest link).
-    public void UseTx(IEnumerable<OrientedLink> links, double data_rate) {
+    // Also uses the necessary spectrum on all antennas involved.
+    public void UseLinks(IEnumerable<OrientedLink> links, double data_rate) {
+      EnsureSameTxAntennaAndTL(links);
+      UseTxPower(links, data_rate);
+      UseSpectrum(links, data_rate);
+    }
+
+    private void UseTxPower(IEnumerable<OrientedLink> links, double data_rate) {
       if (routing_.multiple_tracking_.Contains(links.First().tx)) {
         return;
       }
@@ -314,7 +315,32 @@ public class Routing {
       double usage = (from link in links 
                       select link.TxPowerUsageFromDataRate(data_rate)).Max();
       tx_power_usage_[tx_antenna] += usage;
+    }
+
+    private void UseSpectrum(IEnumerable<OrientedLink> links, double data_rate) {
+      double usage = links.First().SpectrumUsageFromDataRate(data_rate);
+      foreach (OrientedLink link in links) {
+        if (routing_.multiple_tracking_.Contains(link.rx)) {
+          continue;
+        }
+        if (!spectrum_usage_.ContainsKey(link.rx_antenna)) {
+          spectrum_usage_.Add(link.rx_antenna, 0);
+        }
+        spectrum_usage_[link.rx_antenna] += usage;
+      }
+      RealAntennaDigital tx_antenna = links.First().tx_antenna;
+      if (routing_.multiple_tracking_.Contains(links.First().tx)) {
+        return;
+      }
+      if (!spectrum_usage_.ContainsKey(tx_antenna)) {
+        spectrum_usage_.Add(tx_antenna, 0);
+      }
+      spectrum_usage_[tx_antenna] += usage;
+    }
+
+    private void EnsureSameTxAntennaAndTL(IEnumerable<OrientedLink> links) {
 #if DEBUG
+      RealAntennaDigital tx_antenna = links.First().tx_antenna;
       var antennas = from link in links select link.tx_antenna;
       if (antennas.Any(tx => tx != tx_antenna)) {
         throw new ArgumentException("Broadcast from multiple antennas");
@@ -327,20 +353,9 @@ public class Routing {
 #endif
     }
 
-    public void UseRx(OrientedLink link, double data_rate) {
-      if (routing_.multiple_tracking_.Contains(link.rx)) {
-        return;
-      }
-      if (!rx_spectrum_usage_.ContainsKey(link.rx_antenna)) {
-        rx_spectrum_usage_.Add(link.rx_antenna, 0);
-      }
-      rx_spectrum_usage_[link.rx_antenna] +=
-          link.RxSpectrumUsageFromDataRate(data_rate);
-    }
-
     private readonly Dictionary<RealAntenna, double> tx_power_usage_ =
         new Dictionary<RealAntenna, double>();
-    private readonly Dictionary<RealAntenna, double> rx_spectrum_usage_ =
+    private readonly Dictionary<RealAntenna, double> spectrum_usage_ =
         new Dictionary<RealAntenna, double>();
     private Routing routing_;
   }
@@ -387,7 +402,7 @@ public class Routing {
 
     public double CapacityWithUsage(NetworkUsage usage) {
       double limiting_usage = Math.Max(usage.TxPowerUsage(tx_antenna),
-                                       usage.RxSpectrumUsage(rx_antenna));
+                                       usage.SpectrumUsage(rx_antenna));
       return max_data_rate * (1 - limiting_usage);
     }
 
@@ -395,8 +410,8 @@ public class Routing {
       return data_rate / max_data_rate;
     }
 
-    public double RxSpectrumUsageFromDataRate(double data_rate) {
-      return data_rate / max_data_rate * max_bandwidth / rx_antenna.RFBand.ChannelWidth;
+    public double SpectrumUsageFromDataRate(double data_rate) {
+      return data_rate / max_data_rate * max_symbol_rate / rx_antenna.RFBand.ChannelWidth;
     }
 
     private OrientedLink(RACommNode tx,
@@ -411,9 +426,7 @@ public class Routing {
       routing_ = routing;
     }
 
-    private double max_symbol_rate => max_data_rate / modulator.ModulationBits;
-
-    private double max_bandwidth => max_symbol_rate * encoder.CodingRate;
+    private double max_symbol_rate => max_data_rate / (encoder.CodingRate * modulator.ModulationBits);
 
     private readonly Routing routing_;
   }
