@@ -270,7 +270,8 @@ public class Routing {
       routing_ = routing;
     }
 
-    public RoutingNetworkUsage(Routing routing, NetworkUsage other) : this(routing) {
+    public RoutingNetworkUsage(Routing routing, NetworkUsage other)
+        : this(routing) {
       if (other is RoutingNetworkUsage nontrival) {
         tx_power_usage_ =
             new Dictionary<RealAntenna, double>(nontrival.tx_power_usage_);
@@ -389,8 +390,9 @@ public class Routing {
                                            : ra_link.RevDataRate;
     public int tech_level => Math.Min(tx_antenna.TechLevelInfo.Level,
                                       rx_antenna.TechLevelInfo.Level);
-    // TODO(egg): we only care about encoding and modulation; TL 3 and 4 have the same
-    // and should be allowed to communicate.
+    // TODO(egg): we only care about encoding and modulation; but while TL 3 and
+    // 4 have the same encoder, they differ in modulation (QPSK vs. 8PSK), so it
+    // doesn’t matter that much.
     public bool is_at_tx_tech_level =>
         tech_level == tx_antenna.TechLevelInfo.Level;
     public RealAntennaDigital lowest_tech_antenna => 
@@ -411,7 +413,8 @@ public class Routing {
     }
 
     public double SpectrumUsageFromDataRate(double data_rate) {
-      return data_rate / max_data_rate * max_symbol_rate / rx_antenna.RFBand.ChannelWidth;
+      return data_rate / max_data_rate *
+          (max_symbol_rate / rx_antenna.RFBand.ChannelWidth);
     }
 
     private OrientedLink(RACommNode tx,
@@ -426,7 +429,8 @@ public class Routing {
       routing_ = routing;
     }
 
-    private double max_symbol_rate => max_data_rate / (encoder.CodingRate * modulator.ModulationBits);
+    private double max_symbol_rate => max_data_rate /
+        (encoder.CodingRate * modulator.ModulationBits);
 
     private readonly Routing routing_;
   }
