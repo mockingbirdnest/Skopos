@@ -390,6 +390,7 @@ public class Routing {
                                            : ra_link.RevDataRate;
     public int tech_level => Math.Min(tx_antenna.TechLevelInfo.Level,
                                       rx_antenna.TechLevelInfo.Level);
+    public RealAntennas.Antenna.BandInfo band => tx_antenna.RFBand;
     // TODO(egg): we only care about encoding and modulation; but while TL 3 and
     // 4 have the same encoder, they differ in modulation (QPSK vs. 8PSK), so it
     // doesn’t matter that much.
@@ -403,9 +404,14 @@ public class Routing {
     public double length => (tx.precisePosition - rx.precisePosition).magnitude;
 
     public double CapacityWithUsage(NetworkUsage usage) {
-      double limiting_usage = Math.Max(usage.TxPowerUsage(tx_antenna),
+      double available_spectrum =
+          band.ChannelWidth - Math.Max(usage.SpectrumUsage(tx_antenna),
                                        usage.SpectrumUsage(rx_antenna));
-      return max_data_rate * (1 - limiting_usage);
+      double bandwidth_limited_data_rate =
+          Math.Min(max_symbol_rate, available_spectrum) * bits_per_symbol;
+      double power_limited_data_rate =
+          max_data_rate * (1 - usage.TxPowerUsage(tx_antenna));
+      return Math.Min(bandwidth_limited_data_rate, power_limited_data_rate);
     }
 
     public double TxPowerUsageFromDataRate(double data_rate) {
@@ -413,8 +419,7 @@ public class Routing {
     }
 
     public double SpectrumUsageFromDataRate(double data_rate) {
-      return data_rate / max_data_rate *
-          (max_symbol_rate / rx_antenna.RFBand.ChannelWidth);
+      return data_rate / (encoder.CodingRate * modulator.ModulationBits);
     }
 
     private OrientedLink(RACommNode tx,
@@ -429,8 +434,9 @@ public class Routing {
       routing_ = routing;
     }
 
-    private double max_symbol_rate => max_data_rate /
-        (encoder.CodingRate * modulator.ModulationBits);
+    private double max_symbol_rate => max_data_rate / bits_per_symbol;
+    private double bits_per_symbol =>
+        encoder.CodingRate * modulator.ModulationBits;
 
     private readonly Routing routing_;
   }

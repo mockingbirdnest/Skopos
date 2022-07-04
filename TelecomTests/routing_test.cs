@@ -11,6 +11,9 @@ public static class TestingExtensions {
   public static RealAntennaDigital FirstDigitalAntenna(this RACommNode node) {
     return (RealAntennaDigital)node.RAAntennaList[0];
   }
+  public static RACommNode[] ReceivingStations(this Routing.Channel channel) {
+    return (from link in channel.links select link.rx).ToArray();
+  }
 }
 
 [TestClass]
@@ -20,8 +23,8 @@ public class RoutingTest {
     BandInfo.All["C"] = new RealAntennas.Antenna.BandInfo{
          name = "C",
          TechLevel = 3,
-         Frequency = 4.768e9f,
-         ChannelWidth = 1.536e9f};
+         Frequency = 6e9f,
+         ChannelWidth = 4e9f,};
     BandInfo.initialized = true;
     TechLevelInfo.initialized = true;
     TechLevelInfo.All[0] = new TechLevelInfo{
@@ -61,7 +64,6 @@ public class RoutingTest {
         CodingRate = 0.5f,
         RequiredEbN0 = 6.5f};
     Encoder.initialized = true;
-    bandwidth_ = BandInfo.All["C"].ChannelWidth;
   }
 
   [TestMethod]
@@ -105,12 +107,8 @@ public class RoutingTest {
                                          latency_limit: double.PositiveInfinity,
                                          data_rate: 20e6,
                                          out Routing.Channel[] w_v));
-    CollectionAssert.AreEqual(
-        (from link in v_w[0].links select link.rx).ToArray(),
-        new[]{x, y, w});
-    CollectionAssert.AreEqual(
-        (from link in w_v[0].links select link.rx).ToArray(),
-        new[]{x, y, v});
+    CollectionAssert.AreEqual(new[]{x, y, w}, v_w[0].ReceivingStations());
+    CollectionAssert.AreEqual(new[]{x, y, v}, w_v[0].ReceivingStations());
 
     // We can get a circuit at 10 Mbps.
     Routing.Circuit circuit = routing_.UseIfAvailable(
@@ -118,12 +116,10 @@ public class RoutingTest {
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 10e6);
     Assert.IsNotNull(circuit);
-    CollectionAssert.AreEqual(
-        (from link in circuit.forward.links select link.rx).ToArray(),
-        new[]{x, y, w});
-    CollectionAssert.AreEqual(
-        (from link in circuit.backward.links select link.rx).ToArray(),
-        new[]{x, y, v});
+    CollectionAssert.AreEqual(new[]{x, y, w},
+                              circuit.forward.ReceivingStations());
+    CollectionAssert.AreEqual(new[]{x, y, v},
+                              circuit.backward.ReceivingStations());
 
     // We are using half of the power of v and w, since at full power they could
     // transmit at 20 Mbps to x.
@@ -144,17 +140,17 @@ public class RoutingTest {
     // (10 MHz each from the uplink and downlink).
     Assert.AreEqual(
         20e6,
-        routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()) * bandwidth_);
+        routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
     Assert.AreEqual(
         20e6,
-        routing_.usage.SpectrumUsage(w.FirstDigitalAntenna()) * bandwidth_);
+        routing_.usage.SpectrumUsage(w.FirstDigitalAntenna()));
     // Plenty of room even at x and y, though it is a little more crowded.
     Assert.AreEqual(
         40e6,
-        routing_.usage.SpectrumUsage(x.FirstDigitalAntenna()) * bandwidth_);
+        routing_.usage.SpectrumUsage(x.FirstDigitalAntenna()));
     Assert.AreEqual(
         40e6,
-        routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()) * bandwidth_);
+        routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()));
   }
 
   [TestMethod]
@@ -167,8 +163,8 @@ public class RoutingTest {
     var v = MakeNode("v", -1, 0);
     var x = MakeNode("x", 0, 0);
     var y = MakeNode("y", 0, +1);
-    MakeLink(v, x, 10e6, 10e6);
-    MakeLink(v, y, 1e6, 1e6);
+    MakeLink(v, x, 10e6, 0);
+    MakeLink(v, y, 1e6, 0);
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Available,
         routing_.UseIfAvailable(source: v,
@@ -212,14 +208,13 @@ public class RoutingTest {
     // and 500 kHz at y.
     Assert.AreEqual(
         5.5e6,
-        routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()) * bandwidth_);
+        routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
     Assert.AreEqual(
         5.5e6,
-        routing_.usage.SpectrumUsage(x.FirstDigitalAntenna()) * bandwidth_);
-    // TODO(egg): IsNear…
+        routing_.usage.SpectrumUsage(x.FirstDigitalAntenna()));
     Assert.AreEqual(
-        500_000.00000000006,
-        routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()) * bandwidth_);
+        500e3,
+        routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()));
   }
 
   [TestMethod]
@@ -228,8 +223,8 @@ public class RoutingTest {
     // They are connected at a much higher bandwidth via a geostationary
     // satellite.
     //     x
-    //   ↗   ↘
-    // v   →   w
+    //   ⤢   ⤡
+    // v   ↔   w
     var v = MakeNode("v", -1, 0);
     var w = MakeNode("w", +1, 0);
     var x = MakeNode("x", 0, 36_000e3);
@@ -242,8 +237,10 @@ public class RoutingTest {
         round_trip_latency_limit: 1e-3,
         one_way_data_rate: 110);
     Assert.IsNotNull(low_latency_circuit);
-    Assert.AreEqual(1, low_latency_circuit.forward.links.Count);
-    Assert.AreEqual(1, low_latency_circuit.backward.links.Count);
+    CollectionAssert.AreEqual(new[]{w},
+                              low_latency_circuit.forward.ReceivingStations());
+    CollectionAssert.AreEqual(new[]{v},
+                              low_latency_circuit.backward.ReceivingStations());
     Assert.IsNull(routing_.AvailabilityInIsolation(
         source: v,
         destination: w,
@@ -255,10 +252,106 @@ public class RoutingTest {
         round_trip_latency_limit: 500e-3,
         one_way_data_rate: 1e6);
     Assert.IsNotNull(high_bandwidth_circuit);
-    Assert.AreEqual(2, high_bandwidth_circuit.forward.links.Count);
-    Assert.AreEqual(2, high_bandwidth_circuit.backward.links.Count);
+    CollectionAssert.AreEqual(
+        new[]{x, w},
+        high_bandwidth_circuit.forward.ReceivingStations());
+    CollectionAssert.AreEqual(
+        new[]{x, v},
+        high_bandwidth_circuit.backward.ReceivingStations());
     Console.WriteLine($"{high_bandwidth_circuit.forward.latency:R}");
     Console.WriteLine($"{high_bandwidth_circuit.backward.latency:R}");
+  }
+
+  [TestMethod]
+  public void ShortestPath() {
+    // The lower-latency path is the one that has more edges; we use it first,
+    // then only the higher-latency path remains.
+    //       z
+    //   ⤢       ⤡
+    // v ↔ x ↔ y ↔ w
+    var v = MakeNode("v", -2, 0);
+    var x = MakeNode("x", -1, 0);
+    var y = MakeNode("y", +1, 0);
+    var w = MakeNode("w", +2, 0);
+    var z = MakeNode("z", 0, 1);
+    MakeLink(v, x, 10e6, 10e6);
+    MakeLink(v, z, 10e6, 10e6);
+    MakeLink(w, y, 10e6, 10e6);
+    MakeLink(w, z, 10e6, 10e6);
+    MakeLink(x, y, 10e6, 10e6);
+    Routing.Circuit low_latency_circuit = routing_.UseIfAvailable(
+        source: v,
+        destination: w,
+        round_trip_latency_limit: double.PositiveInfinity,
+        one_way_data_rate: 5e6);
+    Assert.IsNotNull(low_latency_circuit);
+    CollectionAssert.AreEqual(
+        new[]{x, y, w},
+        low_latency_circuit.forward.ReceivingStations());
+    CollectionAssert.AreEqual(
+        new[]{y, x, v},
+        low_latency_circuit.backward.ReceivingStations());
+    Routing.Circuit high_latency_circuit = routing_.UseIfAvailable(
+        source: v,
+        destination: w,
+        round_trip_latency_limit: double.PositiveInfinity,
+        one_way_data_rate: 5e6);
+    Assert.IsNotNull(high_latency_circuit);
+    CollectionAssert.AreEqual(
+        new[]{z, w},
+        high_latency_circuit.forward.ReceivingStations());
+    CollectionAssert.AreEqual(
+        new[]{z, v},
+        high_latency_circuit.backward.ReceivingStations());
+
+    Routing.Circuit mixed_latency_circuit = routing_.AvailabilityInIsolation(
+        source: v,
+        destination: w,
+        round_trip_latency_limit: double.PositiveInfinity,
+        one_way_data_rate: 10e6);
+    Assert.IsNotNull(mixed_latency_circuit);
+    CollectionAssert.AreEqual(
+        new[]{x, y, w},
+        mixed_latency_circuit.forward.ReceivingStations());
+    CollectionAssert.AreEqual(
+        new[]{z, v},
+        mixed_latency_circuit.backward.ReceivingStations());
+  }
+
+  [TestMethod]
+  public void BandwidthLimited() {
+    // Station v listens to stations w, x, y, and z, with enough power on all
+    // stations to make use the whole band on each link.
+    var v = MakeNode("v", -1, 0);
+    var w = MakeNode("w", 0, 1);
+    var x = MakeNode("x", 0, 2);
+    var y = MakeNode("y", 0, 3);
+    var z = MakeNode("z", 0, 4);
+    MakeLink(v, w, 4e9, 4e9);
+    MakeLink(v, x, 4e9, 4e9);
+    MakeLink(v, y, 4e9, 4e9);
+    MakeLink(v, z, 4e9, 4e9);
+    Assert.IsNotNull(routing_.UseIfAvailable(
+        source: w,
+        destination: v,
+        round_trip_latency_limit: double.PositiveInfinity,
+        one_way_data_rate: 1e9));
+    Assert.AreEqual(0.25, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
+    Assert.AreEqual(2e9, routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
+    Assert.IsNotNull(routing_.UseIfAvailable(
+        source: x,
+        destination: v,
+        round_trip_latency_limit: double.PositiveInfinity,
+        one_way_data_rate: 1e9));
+    Assert.AreEqual(0.5, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
+    Assert.AreEqual(4e9, routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
+    // Even though we still have half the power available, we are out of
+    // bandwidth.
+    Assert.IsNull(routing_.UseIfAvailable(
+        source: y,
+        destination: v,
+        round_trip_latency_limit: double.PositiveInfinity,
+        one_way_data_rate: 1e9));
   }
 
   RACommNode MakeNode(string name, double x, double y) {
@@ -301,6 +394,5 @@ public class RoutingTest {
   }
 
   private Routing routing_ = new Routing();
-  private double bandwidth_;
 }
 }
