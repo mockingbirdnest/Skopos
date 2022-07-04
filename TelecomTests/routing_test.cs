@@ -78,11 +78,11 @@ public class RoutingTest {
     var y = MakeNode("y", 0, -1);
     // We have 1 Mbps against the arrows, which is too small to be relevant
     // for the connections requested.
-    Connect(v, x, 20e6, 1e6);
-    Connect(v, y, 1e6, 20e6);
-    Connect(w, x, 20e6, 1e6);
-    Connect(w, y, 1e6, 20e6);
-    Connect(x, y, 20e6, 1e6);
+    MakeLink(v, x, 20e6, 1e6);
+    MakeLink(v, y, 1e6, 20e6);
+    MakeLink(w, x, 20e6, 1e6);
+    MakeLink(w, y, 1e6, 20e6);
+    MakeLink(x, y, 20e6, 1e6);
     // We cannot get a circuit at 20 Mbps.
     Assert.IsNull(routing_.UseIfAvailable(
         v, w,
@@ -157,6 +157,30 @@ public class RoutingTest {
         routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()) * bandwidth);
   }
 
+  [TestMethod]
+  public void AsymmetricBroadcast() {
+    // A point (v) to multipoint (x & y) communication, where the v-y link is
+    // much weaker than the v-x link (1 Mbps and 10 Mbps respectively).
+    //     y
+    //   ↗  
+    // v → x
+    var v = MakeNode("v", -1, 0);
+    var x = MakeNode("x", 0, 0);
+    var y = MakeNode("y", 0, +1);
+    MakeLink(v, x, 10e6, 10e6);
+    MakeLink(v, y, 1e6, 1e6);
+    Assert.AreEqual(
+        Routing.PointToMultipointAvailability.Available,
+        routing_.UseIfAvailable(source: v,
+                                destinations: new[] {x, y},
+                                latency_limit: double.PositiveInfinity,
+                                data_rate: 500e3,
+                                out Routing.Channel[] channels));
+    // Even though 500 kbps is only 5% of the v-x link, we have used up half the
+    // power of the antenna, because that is needed to transmit 500 kbps to y.
+    Assert.AreEqual(0.5, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
+  }
+
   RACommNode MakeNode(string name, double x, double y) {
     RACommNode node = new RACommNode();
     node.name = name;
@@ -175,7 +199,7 @@ public class RoutingTest {
     return node;
   }
 
-  RACommLink Connect(
+  RACommLink MakeLink(
       RACommNode tx,
       RACommNode rx,
       double forward_data_rate,
