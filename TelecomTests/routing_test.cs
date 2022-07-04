@@ -162,7 +162,7 @@ public class RoutingTest {
     // A point (v) to multipoint (x & y) communication, where the v-y link is
     // much weaker than the v-x link (1 Mbps and 10 Mbps respectively).
     //     y
-    //   ↗  
+    //   ↗
     // v → x
     var v = MakeNode("v", -1, 0);
     var x = MakeNode("x", 0, 0);
