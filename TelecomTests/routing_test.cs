@@ -87,7 +87,7 @@ public class RoutingTest {
     // We cannot get a circuit at 20 Mbps.
     Assert.IsNull(routing_.UseIfAvailable(
         v, w,
-        latency_limit: double.PositiveInfinity,
+        round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 20e6));
 
     // But we could have simplex at 20 Mbps.
@@ -115,7 +115,7 @@ public class RoutingTest {
     // We can get a circuit at 10 Mbps.
     Routing.Circuit circuit = routing_.UseIfAvailable(
         v, w,
-        latency_limit: double.PositiveInfinity,
+        round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 10e6);
     Assert.IsNotNull(circuit);
     CollectionAssert.AreEqual(
@@ -239,7 +239,7 @@ public class RoutingTest {
     Routing.Circuit low_latency_circuit = routing_.AvailabilityInIsolation(
         source: v,
         destination: w,
-        one_way_latency_limit: 100e-3,
+        round_trip_latency_limit: 1e-3,
         one_way_data_rate: 110);
     Assert.IsNotNull(low_latency_circuit);
     Assert.AreEqual(1, low_latency_circuit.forward.links.Count);
@@ -247,16 +247,18 @@ public class RoutingTest {
     Assert.IsNull(routing_.AvailabilityInIsolation(
         source: v,
         destination: w,
-        one_way_latency_limit: 100e-3,
+        round_trip_latency_limit: 400e-3,
         one_way_data_rate: 1e6));
     Routing.Circuit high_bandwidth_circuit = routing_.AvailabilityInIsolation(
         source: v,
         destination: w,
-        one_way_latency_limit: 400e-3,
+        round_trip_latency_limit: 500e-3,
         one_way_data_rate: 1e6);
     Assert.IsNotNull(high_bandwidth_circuit);
     Assert.AreEqual(2, high_bandwidth_circuit.forward.links.Count);
     Assert.AreEqual(2, high_bandwidth_circuit.backward.links.Count);
+    Console.WriteLine($"{high_bandwidth_circuit.forward.latency:R}");
+    Console.WriteLine($"{high_bandwidth_circuit.backward.latency:R}");
   }
 
   RACommNode MakeNode(string name, double x, double y) {

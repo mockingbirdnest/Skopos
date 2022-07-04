@@ -59,11 +59,11 @@ public class Routing {
   public Circuit AvailabilityInIsolation(
       RACommNode source,
       RACommNode destination,
-      double one_way_latency_limit,
+      double round_trip_latency_limit,
       double one_way_data_rate) {
     return FindCircuit(source,
                        destination,
-                       one_way_latency_limit,
+                       round_trip_latency_limit,
                        one_way_data_rate,
                        NetworkUsage.None);
   }
@@ -71,12 +71,12 @@ public class Routing {
   public Circuit UseIfAvailable(
       RACommNode source,
       RACommNode destination,
-      double latency_limit,
+      double round_trip_latency_limit,
       double one_way_data_rate) {
     Circuit circuit = FindCircuit(
         source,
         destination,
-        latency_limit,
+        round_trip_latency_limit,
         one_way_data_rate,
         current_network_usage_);
     if (circuit != null) {
@@ -130,12 +130,12 @@ public class Routing {
 
   private Circuit FindCircuit(RACommNode source,
                               RACommNode destination,
-                              double one_way_latency_limit,
+                              double round_trip_latency_limit,
                               double one_way_data_rate,
                               NetworkUsage usage) {
     if (FindChannels(source,
                      new[]{destination},
-                     one_way_latency_limit,
+                     round_trip_latency_limit,
                      one_way_data_rate,
                      usage,
                      out Channel[] forward) == Unavailable) {
@@ -147,7 +147,7 @@ public class Routing {
     }
     if (FindChannels(destination,
                      new[]{source},
-                     one_way_latency_limit,
+                     round_trip_latency_limit - forward[0].latency,
                      one_way_data_rate,
                      usage_with_forward_channel,
                      out Channel[] backward) == Unavailable) {
