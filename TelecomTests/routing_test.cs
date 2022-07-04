@@ -222,6 +222,43 @@ public class RoutingTest {
         routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()) * bandwidth_);
   }
 
+  [TestMethod]
+  public void TradingLatencyForBandwidth() {
+    // v and w are 2 m apart, but connected directly via a low bandwidth link.
+    // They are connected at a much higher bandwidth via a geostationary
+    // satellite.
+    //     x
+    //   ↗   ↘
+    // v   →   w
+    var v = MakeNode("v", -1, 0);
+    var w = MakeNode("w", +1, 0);
+    var x = MakeNode("x", 0, 36_000e3);
+    MakeLink(v, w, 300, 300);
+    MakeLink(v, x, 10e6, 10e6);
+    MakeLink(w, x, 10e6, 10e6);
+    Routing.Circuit low_latency_circuit = routing_.AvailabilityInIsolation(
+        source: v,
+        destination: w,
+        one_way_latency_limit: 100e-3,
+        one_way_data_rate: 110);
+    Assert.IsNotNull(low_latency_circuit);
+    Assert.AreEqual(1, low_latency_circuit.forward.links.Count);
+    Assert.AreEqual(1, low_latency_circuit.backward.links.Count);
+    Assert.IsNull(routing_.AvailabilityInIsolation(
+        source: v,
+        destination: w,
+        one_way_latency_limit: 100e-3,
+        one_way_data_rate: 1e6));
+    Routing.Circuit high_bandwidth_circuit = routing_.AvailabilityInIsolation(
+        source: v,
+        destination: w,
+        one_way_latency_limit: 400e-3,
+        one_way_data_rate: 1e6);
+    Assert.IsNotNull(high_bandwidth_circuit);
+    Assert.AreEqual(2, high_bandwidth_circuit.forward.links.Count);
+    Assert.AreEqual(2, high_bandwidth_circuit.backward.links.Count);
+  }
+
   RACommNode MakeNode(string name, double x, double y) {
     RACommNode node = new RACommNode();
     node.name = name;

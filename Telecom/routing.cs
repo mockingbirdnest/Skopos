@@ -59,11 +59,11 @@ public class Routing {
   public Circuit AvailabilityInIsolation(
       RACommNode source,
       RACommNode destination,
-      double latency_limit,
+      double one_way_latency_limit,
       double one_way_data_rate) {
     return FindCircuit(source,
                        destination,
-                       latency_limit,
+                       one_way_latency_limit,
                        one_way_data_rate,
                        NetworkUsage.None);
   }
