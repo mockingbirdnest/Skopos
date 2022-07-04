@@ -61,6 +61,7 @@ public class RoutingTest {
         CodingRate = 0.5f,
         RequiredEbN0 = 6.5f};
     Encoder.initialized = true;
+    bandwidth_ = BandInfo.All["C"].ChannelWidth;
   }
 
   [TestMethod]
@@ -138,23 +139,22 @@ public class RoutingTest {
     // rate to both v and w.
     Assert.AreEqual(1.0,
                     routing_.usage.TxPowerUsage(x.FirstDigitalAntenna()));
-    double bandwidth = BandInfo.All["C"].ChannelWidth;
     // Plenty of room left in C band though.
     // At this tech level we are using 1 Hz per bps, so 20 MHz at v and w
     // (10 MHz each from the uplink and downlink).
     Assert.AreEqual(
         20e6,
-        routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()) * bandwidth);
+        routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()) * bandwidth_);
     Assert.AreEqual(
         20e6,
-        routing_.usage.SpectrumUsage(w.FirstDigitalAntenna()) * bandwidth);
+        routing_.usage.SpectrumUsage(w.FirstDigitalAntenna()) * bandwidth_);
     // Plenty of room even at x and y, though it is a little more crowded.
     Assert.AreEqual(
         40e6,
-        routing_.usage.SpectrumUsage(x.FirstDigitalAntenna()) * bandwidth);
+        routing_.usage.SpectrumUsage(x.FirstDigitalAntenna()) * bandwidth_);
     Assert.AreEqual(
         40e6,
-        routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()) * bandwidth);
+        routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()) * bandwidth_);
   }
 
   [TestMethod]
@@ -176,9 +176,50 @@ public class RoutingTest {
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 500e3,
                                 out Routing.Channel[] channels));
+    CollectionAssert.AllItemsAreNotNull(channels);
     // Even though 500 kbps is only 5% of the v-x link, we have used up half the
     // power of the antenna, because that is needed to transmit 500 kbps to y.
     Assert.AreEqual(0.5, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
+    Assert.AreEqual(
+        Routing.PointToMultipointAvailability.Unavailable,
+        routing_.UseIfAvailable(source: v,
+                                destinations: new[] {x, y},
+                                latency_limit: double.PositiveInfinity,
+                                data_rate: 8e6,
+                                out channels));
+    // Another 500 kbps to x only costs us 5% of our power.
+    Assert.AreEqual(
+        Routing.PointToMultipointAvailability.Available,
+        routing_.UseIfAvailable(source: v,
+                                destinations: new[] {x},
+                                latency_limit: double.PositiveInfinity,
+                                data_rate: 500e3,
+                                out channels));
+    CollectionAssert.AllItemsAreNotNull(channels);
+    Assert.AreEqual(0.55, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
+    // We can throw another 4.5 Mbps at it before we run out of power.
+    Assert.AreEqual(
+        Routing.PointToMultipointAvailability.Partial,
+        routing_.UseIfAvailable(source: v,
+                                destinations: new[] {x, y},
+                                latency_limit: double.PositiveInfinity,
+                                data_rate: 4.5e6,
+                                out channels));
+    Assert.IsNotNull(channels[0]);
+    Assert.IsNull(channels[1]);
+    Assert.AreEqual(1, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
+    // Overall we are transmitting 5.5 MHz from v, receiving all of that at x,
+    // and 500 kHz at y.
+    Assert.AreEqual(
+        5.5e6,
+        routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()) * bandwidth_);
+    Assert.AreEqual(
+        5.5e6,
+        routing_.usage.SpectrumUsage(x.FirstDigitalAntenna()) * bandwidth_);
+    // TODO(egg): IsNear…
+    Assert.AreEqual(
+        500_000.00000000006,
+        routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()) * bandwidth_);
   }
 
   RACommNode MakeNode(string name, double x, double y) {
@@ -221,5 +262,6 @@ public class RoutingTest {
   }
 
   private Routing routing_ = new Routing();
+  private double bandwidth_;
 }
 }
