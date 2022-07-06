@@ -56,7 +56,7 @@ public class Routing {
   }
   public NetworkUsage usage => current_network_usage_;
 
-  public Circuit AvailabilityInIsolation(
+  public Circuit FindCircuitInIsolation(
       RACommNode source,
       RACommNode destination,
       double round_trip_latency_limit,
@@ -68,7 +68,7 @@ public class Routing {
                        NetworkUsage.None);
   }
 
-  public Circuit UseIfAvailable(
+  public Circuit FindAndUseAvailableCircuit(
       RACommNode source,
       RACommNode destination,
       double round_trip_latency_limit,
@@ -90,7 +90,7 @@ public class Routing {
     return circuit;
   }
 
-  public PointToMultipointAvailability AvailabilityInIsolation(
+  public PointToMultipointAvailability FindChannelsInIsolation(
       RACommNode source,
       RACommNode[] destinations,
       double latency_limit,
@@ -104,7 +104,7 @@ public class Routing {
                         out channels);
   }
 
-  public PointToMultipointAvailability UseIfAvailable(
+  public PointToMultipointAvailability FindAndUseAvailableChannels(
       RACommNode source,
       RACommNode[] destinations,
       double latency_limit,
@@ -262,7 +262,7 @@ public class Routing {
 
   private class DirectedLinkUsage {
     public double data_rate = 0;
-    public readonly List<Connection> connections = new List<Connection>();
+    public readonly List<PointToMultipointConnection> connections = new List<PointToMultipointConnection>();
   }
 
   private class RoutingNetworkUsage : NetworkUsage {

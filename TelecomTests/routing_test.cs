@@ -87,7 +87,7 @@ public class RoutingTest {
     MakeLink(w, y, 1e6, 20e6);
     MakeLink(x, y, 20e6, 1e6);
     // We cannot get a circuit at 20 Mbps.
-    Assert.IsNull(routing_.UseIfAvailable(
+    Assert.IsNull(routing_.FindAndUseAvailableCircuit(
         v, w,
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 20e6));
@@ -95,14 +95,14 @@ public class RoutingTest {
     // But we could have simplex at 20 Mbps.
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Available,
-        routing_.AvailabilityInIsolation(source: v,
+        routing_.FindChannelsInIsolation(source: v,
                                          destinations: new[] {w},
                                          latency_limit: double.PositiveInfinity,
                                          data_rate: 20e6,
                                          out Routing.Channel[] v_w));
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Available,
-        routing_.AvailabilityInIsolation(source: w,
+        routing_.FindChannelsInIsolation(source: w,
                                          destinations: new[] {v},
                                          latency_limit: double.PositiveInfinity,
                                          data_rate: 20e6,
@@ -111,7 +111,7 @@ public class RoutingTest {
     CollectionAssert.AreEqual(new[]{x, y, v}, w_v[0].ReceivingStations());
 
     // We can get a circuit at 10 Mbps.
-    Routing.Circuit circuit = routing_.UseIfAvailable(
+    Routing.Circuit circuit = routing_.FindAndUseAvailableCircuit(
         v, w,
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 10e6);
@@ -167,7 +167,7 @@ public class RoutingTest {
     MakeLink(v, y, 1e6, 0);
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Available,
-        routing_.UseIfAvailable(source: v,
+        routing_.FindAndUseAvailableChannels(source: v,
                                 destinations: new[] {x, y},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 500e3,
@@ -178,7 +178,7 @@ public class RoutingTest {
     Assert.AreEqual(0.5, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Unavailable,
-        routing_.UseIfAvailable(source: v,
+        routing_.FindAndUseAvailableChannels(source: v,
                                 destinations: new[] {x, y},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 8e6,
@@ -186,7 +186,7 @@ public class RoutingTest {
     // Another 500 kbps to x only costs us 5% of our power.
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Available,
-        routing_.UseIfAvailable(source: v,
+        routing_.FindAndUseAvailableChannels(source: v,
                                 destinations: new[] {x},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 500e3,
@@ -196,7 +196,7 @@ public class RoutingTest {
     // We can throw another 4.5 Mbps at it before we run out of power.
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Partial,
-        routing_.UseIfAvailable(source: v,
+        routing_.FindAndUseAvailableChannels(source: v,
                                 destinations: new[] {x, y},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 4.5e6,
@@ -231,7 +231,7 @@ public class RoutingTest {
     MakeLink(v, w, 300, 300);
     MakeLink(v, x, 10e6, 10e6);
     MakeLink(w, x, 10e6, 10e6);
-    Routing.Circuit low_latency_circuit = routing_.AvailabilityInIsolation(
+    Routing.Circuit low_latency_circuit = routing_.FindCircuitInIsolation(
         source: v,
         destination: w,
         round_trip_latency_limit: 1e-3,
@@ -241,12 +241,12 @@ public class RoutingTest {
                               low_latency_circuit.forward.ReceivingStations());
     CollectionAssert.AreEqual(new[]{v},
                               low_latency_circuit.backward.ReceivingStations());
-    Assert.IsNull(routing_.AvailabilityInIsolation(
+    Assert.IsNull(routing_.FindCircuitInIsolation(
         source: v,
         destination: w,
         round_trip_latency_limit: 400e-3,
         one_way_data_rate: 1e6));
-    Routing.Circuit high_bandwidth_circuit = routing_.AvailabilityInIsolation(
+    Routing.Circuit high_bandwidth_circuit = routing_.FindCircuitInIsolation(
         source: v,
         destination: w,
         round_trip_latency_limit: 500e-3,
@@ -279,7 +279,7 @@ public class RoutingTest {
     MakeLink(w, y, 10e6, 10e6);
     MakeLink(w, z, 10e6, 10e6);
     MakeLink(x, y, 10e6, 10e6);
-    Routing.Circuit low_latency_circuit = routing_.UseIfAvailable(
+    Routing.Circuit low_latency_circuit = routing_.FindAndUseAvailableCircuit(
         source: v,
         destination: w,
         round_trip_latency_limit: double.PositiveInfinity,
@@ -291,7 +291,7 @@ public class RoutingTest {
     CollectionAssert.AreEqual(
         new[]{y, x, v},
         low_latency_circuit.backward.ReceivingStations());
-    Routing.Circuit high_latency_circuit = routing_.UseIfAvailable(
+    Routing.Circuit high_latency_circuit = routing_.FindAndUseAvailableCircuit(
         source: v,
         destination: w,
         round_trip_latency_limit: double.PositiveInfinity,
@@ -304,7 +304,7 @@ public class RoutingTest {
         new[]{z, v},
         high_latency_circuit.backward.ReceivingStations());
 
-    Routing.Circuit mixed_latency_circuit = routing_.AvailabilityInIsolation(
+    Routing.Circuit mixed_latency_circuit = routing_.FindCircuitInIsolation(
         source: v,
         destination: w,
         round_trip_latency_limit: double.PositiveInfinity,
@@ -331,14 +331,14 @@ public class RoutingTest {
     MakeLink(v, x, 4e9, 4e9);
     MakeLink(v, y, 4e9, 4e9);
     MakeLink(v, z, 4e9, 4e9);
-    Assert.IsNotNull(routing_.UseIfAvailable(
+    Assert.IsNotNull(routing_.FindAndUseAvailableCircuit(
         source: w,
         destination: v,
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 1e9));
     Assert.AreEqual(0.25, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
     Assert.AreEqual(2e9, routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
-    Assert.IsNotNull(routing_.UseIfAvailable(
+    Assert.IsNotNull(routing_.FindAndUseAvailableCircuit(
         source: x,
         destination: v,
         round_trip_latency_limit: double.PositiveInfinity,
@@ -347,7 +347,7 @@ public class RoutingTest {
     Assert.AreEqual(4e9, routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
     // Even though we still have half the power available, we are out of
     // bandwidth.
-    Assert.IsNull(routing_.UseIfAvailable(
+    Assert.IsNull(routing_.FindAndUseAvailableCircuit(
         source: y,
         destination: v,
         round_trip_latency_limit: double.PositiveInfinity,
