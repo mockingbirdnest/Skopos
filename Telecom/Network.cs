@@ -74,7 +74,7 @@ namespace σκοπός {
       }
       foreach (var name_connection in connections_) {
         string name = name_connection.Key;
-        Connection connection = name_connection.Value;
+        PointToMultipointConnection connection = name_connection.Value;
         ConfigNode connection_node = node.AddNode("connection");
         connection_node.AddValue("name", name);
         connection.Serialize(connection_node);
@@ -99,7 +99,7 @@ namespace σκοπός {
       }
       foreach (var connection in connections_.Values) {
         int tx = names_.IndexOf(connection.tx_name);
-        int rx = names_.IndexOf(connection.rx_name);
+        int rx = names_.IndexOf(connection.rx_names);
         //ground_edges_[tx, rx].connections_.Add(connection);
       }
     }
@@ -164,7 +164,7 @@ namespace σκοπός {
           continue;
         }
         Telecom.Log($"Adding connection {name}");
-        connections_.Add(name, new Connection(GetConnectionDefinition(name)));
+        connections_.Add(name, new PointToMultipointConnection(GetConnectionDefinition(name)));
       }
       //ground_edges_ = null;
     }
@@ -462,7 +462,7 @@ namespace σκοπός {
       private Network network_;
     }
 
-    public Connection GetConnection(string name) {
+    public PointToMultipointConnection GetConnection(string name) {
       return connections_[name];
     }
 
@@ -478,8 +478,8 @@ namespace σκοπός {
         new SortedDictionary<string, Customer>();
     private readonly SortedDictionary<string, RACommNetHome> stations_ =
         new SortedDictionary<string, RACommNetHome>();
-    private readonly SortedDictionary<string, Connection> connections_ =
-        new SortedDictionary<string, Connection>();
+    private readonly SortedDictionary<string, PointToMultipointConnection> connections_ =
+        new SortedDictionary<string, PointToMultipointConnection>();
     private List<SiteNode> ground_segment_nodes_;
     public readonly HashSet<RACommNetHome> tx_ = new HashSet<RACommNetHome>();
     public readonly HashSet<RACommNetHome> rx_ = new HashSet<RACommNetHome>();

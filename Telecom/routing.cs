@@ -92,7 +92,7 @@ public class Routing {
 
   public PointToMultipointAvailability FindChannelsInIsolation(
       RACommNode source,
-      RACommNode[] destinations,
+      IList<RACommNode> destinations,
       double latency_limit,
       double data_rate,
       out Channel[] channels) {
@@ -106,7 +106,7 @@ public class Routing {
 
   public PointToMultipointAvailability FindAndUseAvailableChannels(
       RACommNode source,
-      RACommNode[] destinations,
+      IList<RACommNode> destinations,
       double latency_limit,
       double data_rate,
       out Channel[] channels) {
@@ -158,7 +158,7 @@ public class Routing {
 
   private PointToMultipointAvailability FindChannels(
       RACommNode source,
-      RACommNode[] destinations,
+      IList<RACommNode> destinations,
       double latency_limit,
       double data_rate,
       NetworkUsage usage,
@@ -174,8 +174,8 @@ public class Routing {
     boundary[0] = source;
     previous[source] = null;
     int rx_found = 0;
-    channels = new Channel[destinations.Length];
-    bool is_point_to_multipoint = destinations.Length > 1;
+    channels = new Channel[destinations.Count()];
+    bool is_point_to_multipoint = destinations.Count() > 1;
 
     while (boundary.Count > 0) {
       double tx_distance = boundary.First().Key;

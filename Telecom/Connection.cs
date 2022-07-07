@@ -7,141 +7,66 @@ using RealAntennas;
 
 namespace σκοπός {
 
-  // A Connection represents a directed link between two earth stations with a
-  // fixed data rate and a maximal latency. It keeps track of the availability
-  // of that link.
-  public class Connection {
-    public Connection(ConfigNode definition) {
+  // A PointToMultipointConnection represents a communication from one station
+  // to multiple others.  The availabilities of receptions are tracked
+  // separately.
+  public class PointToMultipointConnection {
+    public PointToMultipointConnection(ConfigNode definition) {
       tx_name = definition.GetValue("tx");
-      rx_name = definition.GetValue("rx");
-      latency_threshold = double.Parse(definition.GetValue("latency"));
+      rx_names = definition.GetValues("rx");
+      exclusive = bool.Parse(definition.GetValue("exclusive"));
+      latency_limit = double.Parse(definition.GetValue("latency"));
       data_rate = double.Parse(definition.GetValue("rate"));
-      window_size = int.Parse(definition.GetValue("window"));
-#if IT_COMPILES
-      monitoring_window =  definition.HasValue("monitoring_window")
-          ? int.Parse(definition.GetValue("monitoring_window"))
-          : 2;
-#endif
+      window_size_ = int.Parse(definition.GetValue("window"));
+      channel_services_ = (from rx in rx_names
+                           select new ChannelService(window_size_)).ToArray();
     }
 
-    public void AttemptConnection(Routing routing, double t) {
-      double day = KSPUtil.dateTimeFormatter.Day;
-      double t_in_days = t / day;
-      double new_day = Math.Floor(t_in_days);
-#if IT_COMPILES
-      connected = routing.Connect(this, latency: out _);
-#endif
-      if (!active_) {
-        return;
-      }
-      if (current_day_ == null) {
-        current_day_ = new_day;
-        return;
-      }
-
-      if (new_day > current_day_) {
-        if (connected) {
-          daily_availability_.AddLast(day_fraction_connected_ + (1 - day_fraction_));
-        } else {
-          daily_availability_.AddLast(day_fraction_connected_);
-        }
-        for (int i = 0; i < new_day - current_day_ - 1; ++i) {
-          daily_availability_.AddLast(connected ? 1 : 0);
-        }
-        day_fraction_ = t_in_days - new_day;
-        day_fraction_connected_ = connected ? day_fraction_ : 0;
+    public void AttemptConnection(Routing routing, Network network, double t) {
+      RACommNode tx = network.GetStation(tx_name).Comm;
+      RACommNode[] rx = (from name in rx_names
+                         select network.GetStation(name).Comm).ToArray();
+      Routing.Channel[] channels;
+      if (exclusive) {
+        routing.FindAndUseAvailableChannels(
+            tx, rx, latency_limit, data_rate, out channels);
       } else {
-        day_fraction_connected_ += connected ? (t_in_days - new_day) - day_fraction_ : 0;
-        day_fraction_ = t_in_days - new_day;
+        routing.FindChannelsInIsolation(
+            tx, rx, latency_limit, data_rate, out channels);
       }
-      while (daily_availability_.Count > window_size) {
-        daily_availability_.RemoveFirst();
-      }
-      if (new_day > current_day_) {
-        foreach (var metric in metrics_) {
-          metric.UpdateTimeline(daily_availability_.Reverse(), current_day_.Value - 1);
+      for (int i = 0; i < channels.Length; ++i) {
+        Routing.Channel channel = channels[i];
+        channel_services_[i].basic.ReportAvailability(channel != null, t);
+        foreach (var latency_availability in
+                 channel_services_[i].lower_latency) {
+          double latency = latency_availability.Key;
+          Service improved_service = latency_availability.Value;
+          improved_service.ReportAvailability(channel?.latency <= latency, t);
         }
       }
-      current_day_ = new_day;
     }
 
-    public void Activate() {
-      active_ = true;
-    }
-
-    public void Deactivate() {
-      daily_availability_.Clear();
-      current_day_ = null;
-      active_ = false;
-    }
-
-    public void Serialize(ConfigNode node) {
-      foreach (var availability in daily_availability_) {
-        node.AddValue("daily_availability", availability);
-      }
-      if (current_day_ != null) {
-        node.AddValue("current_day", current_day_);
-      }
-      node.AddValue("day_fraction_connected", day_fraction_connected_);
-      node.AddValue("day_fraction", day_fraction_);
-      node.AddValue("active", active_);
-#if IT_COMPILES
-      foreach (double availability in alerted_availabilities_) {
-        node.AddValue("alerted_availability", availability);
-      }
-#endif
-    }
-
-    public void Load(ConfigNode node) {
-      daily_availability_ =
-          new LinkedList<double>(node.GetValues("daily_availability").Select(double.Parse));
-#if IT_COMPILES
-      alerted_availabilities_ = new HashSet<double>(
-          node.GetValues("alerted_availability").Select(double.Parse));
-#endif
-      if (node.HasValue("current_day")) {
-        current_day_ = double.Parse(node.GetValue("current_day"));
-      }
-      day_fraction_connected_ = double.Parse(node.GetValue("day_fraction_connected"));
-      day_fraction_ = double.Parse(node.GetValue("day_fraction"));
-      active_ = bool.Parse(node.GetValue("active"));
-      foreach (var metric in metrics_) {
-        metric.UpdateTimeline(daily_availability_.Reverse(), current_day_.Value - 1);
-      }
-    }
-
-    public void RegisterMetric(AvailabilityMetric metric) {
-      if (!metric.ComputableFrom(window_size)) {
-        throw new ArgumentException($"Metric is not computable from {window_size} days");
-      }
-      metrics_.Add(metric);
-      if (current_day_ != null) {
-        metric.UpdateTimeline(daily_availability_.Reverse(), current_day_.Value - 1);
-        metric.UpdateCurrentDay(day_fraction_connected_, day_fraction_);
-      }
-    }
-
-    // TODO(egg): Initialize.
-    public RACommNode tx { get; }
-    public List<RACommNode> rx { get; }
-
-    public double latency_threshold { get; }
+    public double latency_limit { get; }
     public double data_rate { get; }
 
     public bool connected { get; private set; }
 
     public string tx_name { get; }
-    public string rx_name { get; }
+    public string[] rx_names { get; }
 
-    public int window_size { get; private set; }
+    public bool exclusive { get; }
 
-    private LinkedList<double> daily_availability_ = new LinkedList<double>();
-    private double? current_day_;
-    private double day_fraction_connected_;
-    private double day_fraction_;
+    private class ChannelService {
+      public ChannelService(int window_size) {
+        basic = new Service(window_size);
+      }
 
-    private List<AvailabilityMetric> metrics_;
+      public Service basic;
+      public SortedDictionary<double, Service> lower_latency =
+          new SortedDictionary<double, Service>();
+    }
 
-    private bool active_;
+    private ChannelService[] channel_services_;
+    private int window_size_;
   }
 }

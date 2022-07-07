@@ -78,6 +78,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="availability_metrics.cs" />
+    <Compile Include="availability_tracker.cs" />
     <Compile Include="connection.cs" />
     <Compile Include="connection_activation.cs" />
     <Compile Include="connection_availability.cs" />
