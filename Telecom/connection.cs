@@ -8,8 +8,8 @@ using RealAntennas;
 namespace σκοπός {
 
   // A PointToMultipointConnection represents a communication from one station
-  // to multiple others.  The availabilities of receptions are tracked
-  // separately.
+  // to multiple others.  The availabilities are tracked separately for each
+  // receiver.
   public class PointToMultipointConnection {
     public PointToMultipointConnection(ConfigNode definition) {
       tx_name = definition.GetValue("tx");
@@ -37,11 +37,40 @@ namespace σκοπός {
       for (int i = 0; i < channels.Length; ++i) {
         Routing.Channel channel = channels[i];
         channel_services_[i].basic.ReportAvailability(channel != null, t);
-        foreach (var latency_availability in
-                 channel_services_[i].lower_latency) {
-          double latency = latency_availability.Key;
-          Service improved_service = latency_availability.Value;
+        foreach (var latency_service in
+                 channel_services_[i].improved_by_latency) {
+          double latency = latency_service.Key;
+          Service improved_service = latency_service.Value;
           improved_service.ReportAvailability(channel?.latency <= latency, t);
+        }
+      }
+    }
+
+    public void Load(ConfigNode node) {
+      var channel_service_nodes = node.GetNodes("channel_service");
+      for (int i = 0; i < channel_services_.Length; ++i) {
+        channel_services_[i].basic.Load(
+            channel_service_nodes[i].GetNode("basic"));
+        foreach (var improved_service_node in
+                 channel_service_nodes[i].GetNodes("improved")) {
+          var latency = double.Parse(improved_service_node.GetValue("latency"));
+          var improved_service = new Service(window_size_);
+          improved_service.Load(improved_service_node);
+          channel_services_[i].improved_by_latency[latency] = improved_service;
+        }
+      }
+    }
+
+    public void Save(ConfigNode node) {
+      foreach (var service in channel_services_) {
+        var channel_service_node = node.AddNode("channel_service");
+        service.basic.Save(channel_service_node.AddNode("basic"));
+        foreach (var latency_service in service.improved_by_latency) {
+          double latency = latency_service.Key;
+          Service improved_service = latency_service.Value;
+          var improved_service_node = channel_service_node.AddNode("improved");
+          improved_service_node.AddValue("latency", latency);
+          improved_service.Save(improved_service_node);
         }
       }
     }
@@ -62,7 +91,7 @@ namespace σκοπός {
       }
 
       public Service basic;
-      public SortedDictionary<double, Service> lower_latency =
+      public SortedDictionary<double, Service> improved_by_latency =
           new SortedDictionary<double, Service>();
     }
 

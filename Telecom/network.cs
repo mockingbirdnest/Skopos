@@ -77,7 +77,7 @@ namespace σκοπός {
         PointToMultipointConnection connection = name_connection.Value;
         ConfigNode connection_node = node.AddNode("connection");
         connection_node.AddValue("name", name);
-        connection.Serialize(connection_node);
+        connection.Save(connection_node);
       }
     }
 
@@ -99,7 +99,7 @@ namespace σκοπός {
       }
       foreach (var connection in connections_.Values) {
         int tx = names_.IndexOf(connection.tx_name);
-        int rx = names_.IndexOf(connection.rx_names);
+        //int rx = names_.IndexOf(connection.rx_names);
         //ground_edges_[tx, rx].connections_.Add(connection);
       }
     }

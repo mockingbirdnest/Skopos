@@ -59,7 +59,7 @@ public class Service {
     }
   }
 
-  public void Serialize(ConfigNode node) {
+  public void Save(ConfigNode node) {
     foreach (var availability in daily_availability_) {
       node.AddValue("daily_availability", availability);
     }
@@ -99,6 +99,6 @@ public class Service {
   private double day_fraction_connected_;
   private double day_fraction_;
 
-  private List<AvailabilityMetric> metrics_;
+  private List<AvailabilityMetric> metrics_ = new List<AvailabilityMetric>();
 }
 }  // σκοπός

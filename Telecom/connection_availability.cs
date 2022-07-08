@@ -102,7 +102,7 @@ namespace σκοπός {
     protected override string GetTitle() {
       var connection = Telecom.Instance.network.GetConnection(connection_);
       var tx = Telecom.Instance.network.GetStation(connection.tx_name);
-      var rx = Telecom.Instance.network.GetStation(connection.rx_names);
+      //var rx = Telecom.Instance.network.GetStation(connection.rx_names);
       string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
       double latency = connection.latency_limit;
       string pretty_latency = latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
