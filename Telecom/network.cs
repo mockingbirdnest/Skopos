@@ -462,7 +462,7 @@ namespace σκοπός {
       private Network network_;
     }
 
-    public PointToMultipointConnection GetConnection(string name) {
+    public Connection GetConnection(string name) {
       return connections_[name];
     }
 
@@ -478,8 +478,8 @@ namespace σκοπός {
         new SortedDictionary<string, Customer>();
     private readonly SortedDictionary<string, RACommNetHome> stations_ =
         new SortedDictionary<string, RACommNetHome>();
-    private readonly SortedDictionary<string, PointToMultipointConnection> connections_ =
-        new SortedDictionary<string, PointToMultipointConnection>();
+    private readonly SortedDictionary<string, Connection> connections_ =
+        new SortedDictionary<string, Connection>();
     private List<SiteNode> ground_segment_nodes_;
     public readonly HashSet<RACommNetHome> tx_ = new HashSet<RACommNetHome>();
     public readonly HashSet<RACommNetHome> rx_ = new HashSet<RACommNetHome>();

@@ -7,10 +7,35 @@ using RealAntennas;
 
 namespace σκοπός {
 
+  public interface Connection {
+    void Load(ConfigNode node);
+    void Save(ConfigNode node);
+    double data_rate { get; }
+    double latency_limit { get; }
+    bool exclusive { get; }
+  }
+
+  // A DuplexConnection represents simultaneous connection between two stations.
+  public class DuplexConnection : Connection {
+    public double data_rate => throw new NotImplementedException();
+
+    public double latency_limit => throw new NotImplementedException();
+
+    public bool exclusive => throw new NotImplementedException();
+
+    public void Load(ConfigNode node) {
+      throw new NotImplementedException();
+    }
+
+    public void Save(ConfigNode node) {
+      throw new NotImplementedException();
+    }
+  }
+
   // A PointToMultipointConnection represents a communication from one station
   // to multiple others.  The availabilities are tracked separately for each
   // receiver.
-  public class PointToMultipointConnection {
+  public class PointToMultipointConnection : Connection {
     public PointToMultipointConnection(ConfigNode definition) {
       tx_name = definition.GetValue("tx");
       rx_names = definition.GetValues("rx");
@@ -77,8 +102,6 @@ namespace σκοπός {
 
     public double latency_limit { get; }
     public double data_rate { get; }
-
-    public bool connected { get; private set; }
 
     public string tx_name { get; }
     public string[] rx_names { get; }
