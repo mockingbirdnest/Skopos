@@ -13,6 +13,8 @@ public class Service {
   }
 
   public void ReportAvailability(bool available, double t) {
+    this.available = available;
+
     double day = KSPUtil.dateTimeFormatter.Day;
     double t_in_days = t / day;
     double new_day = Math.Floor(t_in_days);
@@ -93,6 +95,7 @@ public class Service {
     }
   }
 
+  public bool available { get; private set; }
   public int window_size { get; private set; }
 
   private LinkedList<double> daily_availability_ = new LinkedList<double>();

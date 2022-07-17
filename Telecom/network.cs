@@ -74,7 +74,7 @@ namespace σκοπός {
       }
       foreach (var name_connection in connections_) {
         string name = name_connection.Key;
-        PointToMultipointConnection connection = name_connection.Value;
+        Connection connection = name_connection.Value;
         ConfigNode connection_node = node.AddNode("connection");
         connection_node.AddValue("name", name);
         connection.Save(connection_node);

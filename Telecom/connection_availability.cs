@@ -39,11 +39,13 @@ namespace σκοπός {
   }
 
   public class BroadcastRxAvailability : ContractParameter {
-    public BroadcastRxAvailability(AvailabilityMetric metric,
+    public BroadcastRxAvailability(Service service,
+                                   AvailabilityMetric metric,
                                    string rx_name,
                                    double availability,
                                    ConnectionAvailability.Goal goal) {
       title_tracker_ = new TitleTracker(this);
+      service_ = service;
       metric_ = metric;
       rx_name_ = rx_name;
       availability_ = availability;
@@ -71,41 +73,21 @@ namespace σκοπός {
     }
 
     protected override string GetTitle() {
-      var connection = Telecom.Instance.network.GetConnection(connection_);
-      var tx = Telecom.Instance.network.GetStation(connection.tx_name);
-      //var rx = Telecom.Instance.network.GetStation(connection.rx_names);
-      string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
-      double latency = connection.latency_limit;
-      string pretty_latency = latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
-
-      return $"{rx_name_}: \nAvailability: {metric_.description} (target: {availability_:P2})";
-
-      #if IT_COMPILES
-      string status = connection.within_sla ? "connected" : "disconnected";
-      bool window_full = connection.days == connection.window_size;
-      string window_text = window_full
-          ? $"over the last {connection.window_size} days"
-          : $"over {connection.days}/{connection.window_size} days";
-      string title = $"Connect {tx.displaynodeName} to {rx.displaynodeName}:\n" +
-             $"At least {data_rate}, with a latency of at most {pretty_latency} (currently {status})\n" +
-             $"{connection.availability:P1} availability (target: {availability_:P1}) {window_text}";
-      if (connection.days > connection.monitoring_window) {
-        title += '\n';
-        title += $@"(Availability over the last {
-            connection.monitoring_window} days: {
-            connection.monitored_availability:P1})";
-      }
+      string status = service_.available
+          ? "Currently connected"
+          : "Currently disconnected";
+      string title = $"{rx_name_}:\n" +
+          $"Availability: {metric_.description} (target: {availability_:P2})\n" +
+          status;
       title_tracker_.Add(title);
       if (last_title_ != title) {
         title_tracker_.UpdateContractWindow(title);
       }
       last_title_ = title;
       return title;
-      #else
-      return null;
-      #endif
     }
 
+    private Service service_;
     private AvailabilityMetric metric_;
     private string rx_name_;
     private double availability_;
@@ -124,29 +106,25 @@ namespace σκοπός {
       title_tracker_ = new TitleTracker(this);
     }
 
-    public ConnectionAvailability(string connection, double availability, Goal goal) {
+    public ConnectionAvailability(string connection, double availability, Goal goal,
+                                  Func<AvailabilityMetric> make_metric) {
       title_tracker_ = new TitleTracker(this);
       connection_ = connection;
       availability_ = availability;
       goal_ = goal;
       disableOnStateChange = false;
+      make_metric_ = make_metric;
     }
 
     protected override void OnUpdate() {
       base.OnUpdate();
       var connection = Telecom.Instance.network.GetConnection(connection_);
-      if (connection is PointToMultipointConnection point_to_multipoint &&
-          point_to_multipoint.rx_names.Length > 1 &&
-          subparameters_ == null) {
-        subparameters_ = new List<ConnectionAvailability>();
-        // TODO(egg)
-      }
-      if (subparameters_ != null) {
+      if (subparameters != null) {
         bool any_failed = false;
         bool any_incomplete = false;
-        foreach (var subparameter in subparameters_) {
-          any_failed |= subparameter.state == ParameterState.Failed;
-          any_incomplete |= subparameter.state == ParameterState.Incomplete;
+        foreach (var subparameter in subparameters) {
+          any_failed |= subparameter.State == ParameterState.Failed;
+          any_incomplete |= subparameter.State == ParameterState.Incomplete;
         }
         if (any_failed) {
           SetFailed();
@@ -156,8 +134,6 @@ namespace σκοπός {
           SetComplete();
         }
       } else {
-        AvailabilityMetric metric = metric;
-
         if (state == ParameterState.Failed) {
           return;
         }
@@ -207,41 +183,43 @@ namespace σκοπός {
 
     protected override string GetTitle() {
       var connection = Telecom.Instance.network.GetConnection(connection_);
-      var tx = Telecom.Instance.network.GetStation(connection.tx_name);
-      //var rx = Telecom.Instance.network.GetStation(connection.rx_names);
       string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
       double latency = connection.latency_limit;
       string pretty_latency = latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
 
-      if (subparameters_ != null) {
-        return $"Support broadcast from {tx.displaynodeName} to the " +
-            $"following stations, with a data rate of {data_rate} and a " +
-            $"latency of at most {pretty_latency}.";
-      } else {
-        return $"Support transmission from {tx.displaynodeName} to " +
-            $"{rx.displaynodeName}, with a data rate of {data_rate} and a " +
-            $"latency of at most {pretty_latency}.\nTODO availability";
-      } else {
-        return $"Support duplex communication between {tx.displaynodeName} " +
-            $"and {rx.displaynodeName}, with a one-way data rate of " +
-            $"{data_rate} and a round-trip latency of at most " +
-            $"{pretty_latency}.\nTODO availability";
-      }
+      string title;
 
-      #if IT_COMPILES
-      string status = connection.within_sla ? "connected" : "disconnected";
-      bool window_full = connection.days == connection.window_size;
-      string window_text = window_full
-          ? $"over the last {connection.window_size} days"
-          : $"over {connection.days}/{connection.window_size} days";
-      string title = $"Connect {tx.displaynodeName} to {rx.displaynodeName}:\n" +
-             $"At least {data_rate}, with a latency of at most {pretty_latency} (currently {status})\n" +
-             $"{connection.availability:P1} availability (target: {availability_:P1}) {window_text}";
-      if (connection.days > connection.monitoring_window) {
-        title += '\n';
-        title += $@"(Availability over the last {
-            connection.monitoring_window} days: {
-            connection.monitored_availability:P1})";
+      if (connection is PointToMultipointConnection point_to_multipoint) {
+        var tx = Telecom.Instance.network.GetStation(point_to_multipoint.tx_name);
+        if (subparameters != null) {
+          title = $"Support broadcast from {tx.displaynodeName} to the " +
+              $"following stations, with a data rate of {data_rate} and a " +
+              $"latency of at most {pretty_latency}.";
+        } else {
+          var rx = Telecom.Instance.network.GetStation(
+            point_to_multipoint.rx_names[0]);
+          string status = point_to_multipoint.channel_services[0].basic.available
+              ? "Currently connected"
+              : "Currently disconnected";
+          title = $"Support transmission from {tx.displaynodeName} to " +
+              $"{rx.displaynodeName}, with a data rate of {data_rate} and a " +
+              $"latency of at most {pretty_latency}.\n" +
+              $"Availability: {metric.description} (target: {availability_:P2})\n" +
+              status;
+        }
+      } else {
+        var duplex = (DuplexConnection)connection;
+        var trx0 = Telecom.Instance.network.GetStation(duplex.trx_names[0]);
+        var trx1 = Telecom.Instance.network.GetStation(duplex.trx_names[1]);
+        string status = duplex.basic_service.available
+            ? "Currently connected"
+            : "Currently disconnected";
+        title = $"Support duplex communication between {trx0.displaynodeName} " +
+            $"and {trx1.displaynodeName}, with a one-way data rate of " +
+            $"{data_rate} and a round-trip latency of at most " +
+            $"{pretty_latency}.\n" +
+            $"Availability: {metric.description} (target: {availability_:P2})\n" +
+            status;
       }
       title_tracker_.Add(title);
       if (last_title_ != title) {
@@ -249,12 +227,53 @@ namespace σκοπός {
       }
       last_title_ = title;
       return title;
-      #else
-      return null;
-      #endif
+    }
+
+    private AvailabilityMetric metric {
+      get {
+        if (metric_ == null) {
+          var connection = Telecom.Instance.network.GetConnection(connection_);
+          if (connection is PointToMultipointConnection point_to_multipoint &&
+              point_to_multipoint.rx_names.Length > 1) {
+            metric_ = make_metric_();
+            point_to_multipoint.channel_services[0].basic.RegisterMetric(metric_);
+          } else if (connection is DuplexConnection duplex) {
+            metric_ = make_metric_();
+            duplex.basic_service.RegisterMetric(metric_);
+          }
+        }
+        return metric_;
+      }
+    }
+
+    private List<BroadcastRxAvailability> subparameters {
+      get {
+        if (subparameters_ == null) {
+          var connection = Telecom.Instance.network.GetConnection(connection_);
+          if (connection is PointToMultipointConnection point_to_multipoint &&
+          point_to_multipoint.rx_names.Length > 1) {
+            subparameters_ = new List<BroadcastRxAvailability>();
+            for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
+              var metric = make_metric_();
+              point_to_multipoint.channel_services[i].basic.RegisterMetric(
+                  metric);
+              subparameters_.Add(
+                  new BroadcastRxAvailability(
+                      point_to_multipoint.channel_services[i].basic,
+                      metric,
+                      point_to_multipoint.rx_names[i],
+                      availability_,
+                      goal_));
+            }
+          }
+        }
+        return subparameters_;
+      }
     }
 
     private List<BroadcastRxAvailability> subparameters_;
+    private Func<AvailabilityMetric> make_metric_;
+    private AvailabilityMetric metric_;
     private string connection_;
     private double availability_;
     private Goal goal_;

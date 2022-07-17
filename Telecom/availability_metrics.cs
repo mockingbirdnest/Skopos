@@ -38,7 +38,7 @@ public class MovingWindowAvailability
     } else {
       return false;
     }
-   }
+  }
 
   public bool Equals(MovingWindowAvailability other) {
     return window_size == other?.window_size;
