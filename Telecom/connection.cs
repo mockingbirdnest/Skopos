@@ -6,6 +6,15 @@ using System.Threading.Tasks;
 using RealAntennas;
 
 namespace σκοπός {
+  public static class Connections {
+    public static Connection New(ConfigNode definition) {
+      if (definition.HasValue("tx")) {
+        return new PointToMultipointConnection(definition);
+      } else {
+        return new DuplexConnection(definition);
+      }
+    }
+  }
 
   public interface Connection {
     void AttemptConnection(Routing routing, Network network, double t);
@@ -33,15 +42,48 @@ namespace σκοπός {
     }
 
     public void AttemptConnection(Routing routing, Network network, double t) {
-      throw new NotImplementedException();
+      Routing.Circuit circuit;
+      if (exclusive) {
+        circuit = routing.FindAndUseAvailableCircuit(
+            network.GetStation(trx_names[0]).Comm,
+            network.GetStation(trx_names[1]).Comm,
+            latency_limit, data_rate);
+      } else {
+        circuit = routing.FindAndUseAvailableCircuit(
+            network.GetStation(trx_names[0]).Comm,
+            network.GetStation(trx_names[1]).Comm,
+            latency_limit, data_rate);
+      }
+      basic_service.ReportAvailability(circuit != null, t);
+      foreach (var latency_service in improved_service_by_latency) {
+        double latency = latency_service.Key;
+        Service service = latency_service.Value;
+        bool available =
+            circuit?.forward.latency + circuit?.backward.latency <= latency;
+        basic_service.ReportAvailability(available, t);
+      }
     }
 
     public void Load(ConfigNode node) {
-      throw new NotImplementedException();
+      basic_service.Load(node.GetNode("basic_service"));
+      foreach (var improved_service_node in
+               node.GetNodes("improved_service")) {
+        var latency = double.Parse(improved_service_node.GetValue("latency"));
+        var improved_service = new Service(window_size_);
+        improved_service.Load(improved_service_node);
+        improved_service_by_latency[latency] = improved_service;
+      }
     }
 
     public void Save(ConfigNode node) {
-      throw new NotImplementedException();
+      basic_service.Save(node.AddNode("basic_service"));
+      foreach (var latency_service in improved_service_by_latency) {
+        double latency = latency_service.Key;
+        Service improved_service = latency_service.Value;
+        var improved_service_node = node.AddNode("improved_service");
+        improved_service_node.AddValue("latency", latency);
+        improved_service.Save(improved_service_node);
+      }
     }
 
     public double data_rate { get; }

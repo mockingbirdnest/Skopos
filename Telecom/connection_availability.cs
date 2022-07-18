@@ -13,17 +13,19 @@ namespace σκοπός {
       var ok = base.Load(node);
       ok &= ConfigNodeUtil.ParseValue<string>(node, "connection", x => connection_ = x, this);
       ok &= ConfigNodeUtil.ParseValue<double>(node, "availability", x => availability_ = x, this);
+      metric_ = node.GetNode("metric");
       return ok;
     }
 
     public abstract ConnectionAvailability.Goal Goal();
 
-    public override ContractParameter Generate(Contract contract) {
-      return new ConnectionAvailability(connection_, availability_, Goal());
+    public override ContractParameter Generate(Contract contract) { 
+      return new ConnectionAvailability(connection_, availability_, Goal(), metric_);
     }
 
     private string connection_;
     private double availability_;
+    private ConfigNode metric_;
   }
 
   public class AchieveConnectionAvailabilityFactory : ConnectionAvailabilityFactory {
@@ -107,13 +109,13 @@ namespace σκοπός {
     }
 
     public ConnectionAvailability(string connection, double availability, Goal goal,
-                                  Func<AvailabilityMetric> make_metric) {
+                                  ConfigNode metric_definition) {
       title_tracker_ = new TitleTracker(this);
       connection_ = connection;
       availability_ = availability;
       goal_ = goal;
       disableOnStateChange = false;
-      make_metric_ = make_metric;
+      metric_definition_ = metric_definition;
     }
 
     protected override void OnUpdate() {
@@ -162,12 +164,14 @@ namespace σκοπός {
           node.RemoveNode(subparameter);
         }
       }
+      metric_definition_ = node.GetNode("metric");
     }
 
     protected override void OnSave(ConfigNode node) {
       node.AddValue("connection", connection_);
       node.AddValue("availability", availability_);
       node.AddValue("goal", goal_);
+      node.AddNode("metric", metric_definition_);
     }
 
     protected override string GetNotes() {
@@ -229,16 +233,40 @@ namespace σκοπός {
       return title;
     }
 
+    private AvailabilityMetric MakeMetric() {
+      string type = metric_definition_.GetValue("type");
+      if (type == "monthly") {
+        DateTime date = Root.ContractState == Contract.State.Active
+            ? RSS.epoch.AddSeconds(Root.DateAccepted)
+            : RSS.current_time;
+        var effective_date =
+            new DateTime(date.Year, date.Month, 1).AddMonths(1);
+        int offset = int.Parse(metric_definition_.GetValue("month"));
+        return new PeriodAvailability(
+            (effective_date.AddMonths(offset) - RSS.epoch).Days,
+            (effective_date.AddMonths(offset + 1).AddDays(-1) - RSS.epoch).Days);
+      } else if (type == "fixed") {
+        return new PeriodAvailability(
+            (DateTime.Parse(metric_definition_.GetValue("first")) - RSS.epoch).Days,
+            (DateTime.Parse(metric_definition_.GetValue("last")) - RSS.epoch).Days);
+      } else if (type == "moving") {
+        return new MovingWindowAvailability(
+            int.Parse(metric_definition_.GetValue("window")));
+      } else {
+        throw new ArgumentException($"Unexpected metric type {type}");
+      }
+    }
+
     private AvailabilityMetric metric {
       get {
         if (metric_ == null) {
           var connection = Telecom.Instance.network.GetConnection(connection_);
           if (connection is PointToMultipointConnection point_to_multipoint &&
               point_to_multipoint.rx_names.Length > 1) {
-            metric_ = make_metric_();
+            metric_ = MakeMetric();
             point_to_multipoint.channel_services[0].basic.RegisterMetric(metric_);
           } else if (connection is DuplexConnection duplex) {
-            metric_ = make_metric_();
+            metric_ = MakeMetric();
             duplex.basic_service.RegisterMetric(metric_);
           }
         }
@@ -254,16 +282,17 @@ namespace σκοπός {
           point_to_multipoint.rx_names.Length > 1) {
             subparameters_ = new List<BroadcastRxAvailability>();
             for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
-              var metric = make_metric_();
+              var metric = MakeMetric();
               point_to_multipoint.channel_services[i].basic.RegisterMetric(
                   metric);
-              subparameters_.Add(
-                  new BroadcastRxAvailability(
-                      point_to_multipoint.channel_services[i].basic,
-                      metric,
-                      point_to_multipoint.rx_names[i],
-                      availability_,
-                      goal_));
+              var subparameter = new BroadcastRxAvailability(
+                  point_to_multipoint.channel_services[i].basic,
+                  metric,
+                  point_to_multipoint.rx_names[i],
+                  availability_,
+                  goal_);
+              AddParameter(subparameter);
+              subparameters_.Add(subparameter);
             }
           }
         }
@@ -272,7 +301,7 @@ namespace σκοπός {
     }
 
     private List<BroadcastRxAvailability> subparameters_;
-    private Func<AvailabilityMetric> make_metric_;
+    private ConfigNode metric_definition_;
     private AvailabilityMetric metric_;
     private string connection_;
     private double availability_;

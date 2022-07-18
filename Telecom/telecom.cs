@@ -138,70 +138,6 @@ namespace σκοπός {
             network.customer_pool_size = Math.Max(pool_size, 0);
           }
         }
-        using (new UnityEngine.GUILayout.HorizontalScope()) {
-          UnityEngine.GUILayout.Label(@"Tx\Rx", UnityEngine.GUILayout.Width(3 * 20));
-          for (int rx = 0; rx < network.all_ground_.Length; ++rx) {
-            if (!network.rx_.Contains(network.all_ground_[rx])) {
-              continue;
-            }
-            UnityEngine.GUILayout.Label($"{rx + 1}", UnityEngine.GUILayout.Width(6 * 20));
-          }
-        }
-        for (int tx = 0; tx < network.all_ground_.Length; ++tx) {
-          if (!network.tx_.Contains(network.all_ground_[tx])) {
-            continue;
-          }
-          using (new UnityEngine.GUILayout.HorizontalScope()) {
-            UnityEngine.GUILayout.Label($"{tx + 1}", UnityEngine.GUILayout.Width(3 * 20));
-            for (int rx = 0; rx < network.all_ground_.Length; ++rx) {
-              if (!network.rx_.Contains(network.all_ground_[rx])) {
-                continue;
-              }
-              //double rate = network.ground_edges_[tx, rx].current_rate;
-              //double latency = network.ground_edges_[tx, rx].current_latency;
-              //UnityEngine.GUILayout.Label(
-              //  double.IsNaN(latency) || double.IsNaN(latency)
-              //    ? "—"
-              //    : $"{RATools.PrettyPrintDataRate(rate)}\n" +
-              //      $"{latency * 1000:F0} ms\n",
-              //  UnityEngine.GUILayout.Width(6 * 20));
-            }
-          }
-        }
-        for (int i = 0; i < network.all_ground_.Length; ++i) {
-          var station = network.all_ground_[i];
-          var antenna = station.Comm.RAAntennaList[0];
-          string role =
-            (network.tx_.Contains(station) ? "T" : "") +
-            (network.rx_.Contains(station) ? "R" : "") + "x";
-          UnityEngine.GUILayout.Label(
-            $@"{i + 1}: {role} {station.nodeName} {
-              (antenna.Target == null ? "Tracking" : "Fixed")}");
-        }
-        if (network.space_segment_.Count > 0) {
-          UnityEngine.GUILayout.Label("Recent relays:");
-        }
-        foreach (var vessel_time in network.space_segment_) {
-          double age_s = Telecom.Instance.last_universal_time - vessel_time.Value;
-          string age = null;
-          if (age_s > 2 * KSPUtil.dateTimeFormatter.Day) {
-            age = $"{age_s / KSPUtil.dateTimeFormatter.Day:F0} days ago";
-          } else if (age_s > 2 * KSPUtil.dateTimeFormatter.Hour) {
-            age = $"{age_s / KSPUtil.dateTimeFormatter.Hour:F0} hours ago";
-          } else if (age_s > 2 * KSPUtil.dateTimeFormatter.Minute) {
-            age = $"{age_s / KSPUtil.dateTimeFormatter.Minute:F0} minutes ago";
-          } else if (age_s > 2) {
-            age = $"{age_s:F0} seconds ago";
-          }
-          using (new UnityEngine.GUILayout.HorizontalScope()) {
-            UnityEngine.GUILayout.Label($"{vessel_time.Key.name} {age}");
-            if (age != null &&
-              UnityEngine.GUILayout.Button("Remove", UnityEngine.GUILayout.Width(4 * 20))) {
-              network.space_segment_.Remove(vessel_time.Key);
-              return;
-            }
-          }
-        }
         show_network_ = UnityEngine.GUILayout.Toggle(show_network_, "Show network");
         show_active_links_ = UnityEngine.GUILayout.Toggle(show_active_links_, "Active links only");
         network.hide_off_network = show_network_;
@@ -217,26 +153,11 @@ namespace σκοπός {
       if (ui == null) {
         return;
       }
-      foreach (var station in network.all_ground_) {
+      foreach (var station in network.AllGround()) {
         ui.OverrideShownCones.Add(station.Comm);
-      }
-      foreach (var satellite in network.space_segment_.Keys) {
-        ui.OverrideShownCones.Add(satellite.Connection.Comm as RACommNode);
       }
       if (show_active_links_) {
         ui.OverrideShownLinks.AddRange(network.active_links_);
-      } else {
-        foreach (var station in network.all_ground_) {
-          ui.OverrideShownLinks.AddRange(station.Comm.Values);
-        }
-        foreach (var satellite in network.space_segment_.Keys) {
-          foreach (var link in satellite.Connection.Comm.Values) {
-            Vessel vessel = (link.b as RACommNode).ParentVessel;
-            if (vessel != null && network.space_segment_.ContainsKey(vessel)) {
-              ui.OverrideShownLinks.Add(link);
-            }
-          }
-        }
       }
     }
 

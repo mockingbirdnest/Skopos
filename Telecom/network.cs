@@ -83,12 +83,6 @@ namespace σκοπός {
 
     private void RebuildGraph() {
       int n = stations_.Count + customers_.Count;
-      //ground_edges_ = new Edge[n, n];
-      for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; ++j) {
-          //ground_edges_[i, j] = new Edge();
-        }
-      }
       names_ = new string[n];
       int k = 0;
       foreach (string name in stations_.Keys) {
@@ -96,11 +90,6 @@ namespace σκοπός {
       }
       foreach (string name in customers_.Keys) {
         names_[k++] = name;
-      }
-      foreach (var connection in connections_.Values) {
-        int tx = names_.IndexOf(connection.tx_name);
-        //int rx = names_.IndexOf(connection.rx_names);
-        //ground_edges_[tx, rx].connections_.Add(connection);
       }
     }
 
@@ -113,7 +102,6 @@ namespace σκοπός {
         Telecom.Log($"Adding station {name}");
         stations_.Add(name, null);
       }
-      //ground_edges_ = null;
     }
 
     RACommNetHome MakeStation(string name) {
@@ -155,7 +143,6 @@ namespace σκοπός {
         Telecom.Log($"Adding customer {name}");
         customers_.Add(name, new Customer(GetCustomerDefinition(name), this));
       }
-      //ground_edges_ = null;
     }
     public void AddConnections(IEnumerable<string> names) {
       foreach (var name in names) {
@@ -164,9 +151,8 @@ namespace σκοπός {
           continue;
         }
         Telecom.Log($"Adding connection {name}");
-        connections_.Add(name, new PointToMultipointConnection(GetConnectionDefinition(name)));
+        connections_.Add(name, Connections.New(GetConnectionDefinition(name)));
       }
-      //ground_edges_ = null;
     }
 
     public void RemoveStations(IEnumerable<string> names) { }
@@ -209,9 +195,6 @@ namespace σκοπός {
     }
 
     public void Refresh() {
-      //if (ground_edges_ == null) {
-      //  RebuildGraph();
-      //}
       bool all_stations_good = true;;
       var station_names = stations_.Keys.ToArray();
       foreach (var name in station_names) {
@@ -328,36 +311,10 @@ namespace σκοπός {
         Telecom.Log("No RA comm network");
         return;
       }
-      all_ground_ = stations_.Values.Concat(from customer in customers_.Values select customer.station).ToArray();
-      min_rate_ = double.PositiveInfinity;
-      active_links_.Clear();
-      for (int tx = 0; tx < all_ground_.Length; ++tx) {
-        for (int rx = 0; rx < all_ground_.Length; ++rx) {
-          if (rx == tx || !tx_.Contains(all_ground_[tx]) || !rx_.Contains(all_ground_[rx])) {
-            //ground_edges_[tx, rx].AddMeasurement(double.NaN, double.NaN);
-            continue;
-          }
-          var path = new CommNet.CommPath();
-          network.FindClosestWhere(
-            all_ground_[tx].Comm, path, (_, n) => n == all_ground_[rx].Comm);
-          double rate = double.PositiveInfinity;
-          double length = 0;
-          foreach (var l in path) {
-            active_links_.Add(l);
-            RACommLink link = l as RACommLink;
-            rate = Math.Min(rate, link.FwdDataRate);
-            length += (l.a.position - l.b.position).magnitude;
-            if ((l.end as RACommNode).ParentVessel is Vessel vessel) {
-              space_segment_[vessel] = Telecom.Instance.last_universal_time;
-            }
-          }
-          if (path.IsEmpty()) {
-            rate = 0;
-          }
-          //ground_edges_[tx, rx].AddMeasurement(rate: rate, latency: length / 299792458);
-          min_rate_ = Math.Min(min_rate_, rate);
-        }
+      foreach (var connection in connections_.Values) {
+        connection.AttemptConnection(routing_, this, Planetarium.GetUniversalTime());
       }
+      active_links_.Clear();
     }
 
     private class Customer {
@@ -470,6 +427,11 @@ namespace σκοπός {
       return stations_[name];
     }
 
+    public IEnumerable<RACommNetHome> AllGround() {
+      return stations_.Values.Concat(
+          from customer in customers_.Values select customer.station);
+    }
+
     public int customer_pool_size { get; set; }
     public bool hide_off_network { get; set; }
 
@@ -483,14 +445,12 @@ namespace σκοπός {
     private List<SiteNode> ground_segment_nodes_;
     public readonly HashSet<RACommNetHome> tx_ = new HashSet<RACommNetHome>();
     public readonly HashSet<RACommNetHome> rx_ = new HashSet<RACommNetHome>();
-    public readonly Dictionary<Vessel, double> space_segment_ = new Dictionary<Vessel, double>();
     private readonly List<Vector3d> nominal_satellite_locations_ = new List<Vector3d>();
     bool must_retarget_customers_ = false;
     private readonly Random random_ = new Random();
     public readonly List<CommNet.CommLink> active_links_ = new List<CommNet.CommLink>();
-    public RACommNetHome[] all_ground_ = { };
     public string[] names_ = { };
-    public double min_rate_;
     public bool freeze_customers_;
+    public Routing routing_;
   }
 }
