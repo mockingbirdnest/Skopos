@@ -81,7 +81,7 @@ namespace σκοπός {
           : "Currently disconnected";
       var rx = Telecom.Instance.network.GetStation(rx_name_);
       string title = $"{rx.displaynodeName}: {status}.\n" +
-          $"Availability: {metric_.description}\nTarget: {availability_:P2};";
+          $"Availability: {metric_.description}\nTarget: {availability_:P2}";
       title_tracker_.Add(title);
       if (last_title_ != title) {
         title_tracker_.UpdateContractWindow(title);
@@ -174,17 +174,6 @@ namespace σκοπός {
       node.AddNode("metric", metric_definition_);
     }
 
-    protected override string GetNotes() {
-      var connection = Telecom.Instance.network.GetConnection(connection_);
-      if (connection.exclusive) {
-        return "\nThis capability must be available simultaneously with " +
-               "any others currently in operation; ensure your overall " +
-               "network capacity is appropriately sized!";
-      } else {
-        return "\nThis transmission will be sent over any existing networks; ";
-      }
-    }
-
     protected override string GetTitle() {
       Telecom.Log($"GetTitle for {connection_}");
       var connection = Telecom.Instance.network.GetConnection(connection_);
@@ -214,7 +203,7 @@ namespace σκοπός {
           title = $"Support transmission from {tx.displaynodeName} to " +
               $"{rx.displaynodeName}, with a data rate of {data_rate} and a " +
               $"latency of at most {pretty_latency}.\n{status}.\n" +
-              $"Availability: {metric.description};\nTarget: {availability_:P2}";
+              $"Availability: {metric.description}\nTarget: {availability_:P2}";
         }
       } else {
         Telecom.Log("Duplex");
@@ -230,7 +219,7 @@ namespace σκοπός {
             $"and {trx1.displaynodeName}, with a one-way data rate of " +
             $"{data_rate} and a round-trip latency of at most " +
             $"{pretty_latency}.\n{status}.\n" +
-            $"Availability: {metric.description};\nTarget: {availability_:P2})";
+            $"Availability: {metric.description}\nTarget: {availability_:P2}";
       }
       title_tracker_.Add(title);
       if (last_title_ != title) {

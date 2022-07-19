@@ -138,6 +138,77 @@ namespace σκοπός {
             network.customer_pool_size = Math.Max(pool_size, 0);
           }
         }
+        foreach (var connection in network.connections) {
+          RATools.PrettyPrintDataRate(connection.data_rate);
+          if (connection is PointToMultipointConnection point_to_multipoint) {
+            var tx = network.GetStation(point_to_multipoint.tx_name);
+            UnityEngine.GUILayout.Label(
+                $"{tx.displaynodeName} to",
+                UnityEngine.GUILayout.Width(25 * 30));
+            for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
+              bool available =
+                  point_to_multipoint.channel_services[i].basic.available;
+              string status = available ? "Connected" : "Disconnected";
+              var rx = network.GetStation(point_to_multipoint.rx_names[i]);
+              UnityEngine.GUILayout.Label(
+                $@"{rx.displaynodeName}: {status}");
+              if (!available) {
+                network.routing_.FindChannelsInIsolation(
+                    tx.Comm,
+                    new[]{rx.Comm},
+                    latency_limit: double.PositiveInfinity,
+                    connection.data_rate,
+                    out Routing.Channel[] channels);
+                bool purely_latency_limited = channels[0] != null;
+                if (purely_latency_limited) {
+                  UnityEngine.GUILayout.Label(
+                      $"Latency-limited: available at {channels[0].latency} s");
+                }
+                network.routing_.FindChannelsInIsolation(
+                    tx.Comm,
+                    new[]{rx.Comm},
+                    connection.latency_limit,
+                    data_rate: 0,
+                    out channels);
+                bool purely_rate_limited = channels[0] != null;
+                if (purely_rate_limited) {
+                  string max_data_rate = RATools.PrettyPrintDataRate(
+                      (from link in channels[0].links
+                       select link.max_data_rate).Min());
+                  UnityEngine.GUILayout.Label(
+                      $"Limited by data rate: available at {max_data_rate}");
+                }
+                if (!purely_rate_limited && !purely_latency_limited) {
+                  network.routing_.FindChannelsInIsolation(
+                      tx.Comm,
+                      new[]{rx.Comm},
+                      latency_limit: double.PositiveInfinity,
+                      data_rate: 0,
+                      out channels);
+                  if (channels[0] != null) {
+                    string max_data_rate = RATools.PrettyPrintDataRate(
+                        (from link in channels[0].links
+                         select link.max_data_rate).Min());
+                    UnityEngine.GUILayout.Label(
+                        "Limited by both latency and data rate: available at " +
+                        $"{max_data_rate}, {channels[0].latency} s");
+                  }
+                }
+                if (connection.exclusive) {
+                  // TODO(egg): analyze capacity issues.
+                }
+              }
+            }
+          } else if (connection is DuplexConnection duplex) {
+            var trx0 = network.GetStation(duplex.trx_names[0]);
+            var trx1 = network.GetStation(duplex.trx_names[1]);
+            bool available = duplex.basic_service.available;
+            string status = available ? "Connected" : "Disconnected";
+            UnityEngine.GUILayout.Label(
+                $"Duplex between {trx0} and {trx1}: {status}",
+                UnityEngine.GUILayout.Width(25 * 30));
+          }
+        }
         show_network_ = UnityEngine.GUILayout.Toggle(show_network_, "Show network");
         show_active_links_ = UnityEngine.GUILayout.Toggle(show_active_links_, "Active links only");
         network.hide_off_network = show_network_;
@@ -166,7 +237,7 @@ namespace σκοπός {
 
     public Network network { get; private set; }
     private bool show_network_ = true;
-    private bool show_active_links_ = true;
+    private bool show_active_links_ = false;
     private bool show_window_ = true;
     private UnityEngine.Rect window_;
     public double last_universal_time => ut_;

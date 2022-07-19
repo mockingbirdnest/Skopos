@@ -124,12 +124,9 @@ namespace σκοπός {
       station.Configure(station_node, body);
 
       if (node.GetValue("role") == "tx") {
-        tx_.Add(station);
+        tx_only_.Add(station);
       } else if (node.GetValue("role") == "rx") {
-        rx_.Add(station);
-      } else {
-        tx_.Add(station);
-        rx_.Add(station);
+        rx_only_.Add(station);
       }
       return station;
     }
@@ -311,6 +308,10 @@ namespace σκοπός {
         Telecom.Log("No RA comm network");
         return;
       }
+      routing_.Reset(
+          from station in tx_only_ select station.Comm,
+          from station in rx_only_ select station.Comm,
+          from station in stations_.Values select station.Comm);
       foreach (var connection in connections_.Values) {
         connection.AttemptConnection(routing_, this, Telecom.Instance.last_universal_time);
       }
@@ -383,12 +384,9 @@ namespace σκοπός {
         }
         new_station.Configure(node, body_);
         if (template_.GetValue("role") == "tx") {
-          network_.tx_.Add(new_station);
+          network_.tx_only_.Add(new_station);
         } else if (template_.GetValue("role") == "rx") {
-          network_.rx_.Add(new_station);
-        } else {
-          network_.tx_.Add(new_station);
-          network_.rx_.Add(new_station);
+          network_.rx_only_.Add(new_station);
         }
         return new_station;
       }
@@ -397,8 +395,8 @@ namespace σκοπός {
         if (station == null) {
           return;
         }
-        network_.tx_.Remove(station);
-        network_.rx_.Remove(station);
+        network_.tx_only_.Remove(station);
+        network_.rx_only_.Remove(station);
         CommNet.CommNetNetwork.Instance.CommNet.Remove(station.Comm);
         if (node_ != null) {
           FinePrint.WaypointManager.RemoveWaypoint(node_.wayPoint);
@@ -418,6 +416,8 @@ namespace σκοπός {
       private CelestialBody body_;
       private Network network_;
     }
+
+    public IEnumerable<Connection> connections => connections_.Values;
 
     public Connection GetConnection(string name) {
       return connections_[name];
@@ -443,8 +443,8 @@ namespace σκοπός {
     private readonly SortedDictionary<string, Connection> connections_ =
         new SortedDictionary<string, Connection>();
     private List<SiteNode> ground_segment_nodes_;
-    public readonly HashSet<RACommNetHome> tx_ = new HashSet<RACommNetHome>();
-    public readonly HashSet<RACommNetHome> rx_ = new HashSet<RACommNetHome>();
+    public readonly HashSet<RACommNetHome> tx_only_ = new HashSet<RACommNetHome>();
+    public readonly HashSet<RACommNetHome> rx_only_ = new HashSet<RACommNetHome>();
     private readonly List<Vector3d> nominal_satellite_locations_ = new List<Vector3d>();
     bool must_retarget_customers_ = false;
     private readonly Random random_ = new Random();

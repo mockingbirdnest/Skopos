@@ -184,6 +184,7 @@ public class Routing {
 
       if (tx_distance > latency_limit * c) {
         // We have run out of latency, no need to keep searching.
+        Telecom.Log($"Ran out of latency at {tx.displayName}: {tx_distance / c} s");
         return rx_found == 0 ? Unavailable : Partial;
       } else if (destinations.Contains(tx)) {
         int i = destinations.IndexOf(tx);
@@ -197,6 +198,7 @@ public class Routing {
         channels[i].latency = tx_distance / c;
         ++rx_found;
         if (rx_found == channels.Length) {
+          Telecom.Log($"Found all rx");
           return PointToMultipointAvailability.Available;
         }
       }
@@ -210,7 +212,7 @@ public class Routing {
       foreach (var stock_rx in tx.Keys) {
         var rx = (RACommNode)stock_rx;
 
-        if (tx_only_.Contains(tx) || interior.Contains(rx)) {
+        if (tx_only_.Contains(rx) || interior.Contains(rx)) {
           continue;
         }
 
@@ -252,6 +254,7 @@ public class Routing {
         previous[rx] = link;
       }
     }
+    Telecom.Log($"Ran out of graph, found {rx_found}");
     return rx_found == 0 ? Unavailable : Partial;
   }
 
