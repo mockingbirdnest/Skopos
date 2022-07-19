@@ -13,7 +13,8 @@ namespace σκοπός {
       var ok = base.Load(node);
       ok &= ConfigNodeUtil.ParseValue<string>(node, "connection", x => connection_ = x, this);
       ok &= ConfigNodeUtil.ParseValue<double>(node, "availability", x => availability_ = x, this);
-      metric_ = node.GetNode("metric");
+      var metric = ConfigNodeUtil.GetChildNode(node, "metric");
+      metric_ = metric;
       return ok;
     }
 
@@ -78,9 +79,9 @@ namespace σκοπός {
       string status = service_.available
           ? "Currently connected"
           : "Currently disconnected";
-      string title = $"{rx_name_}:\n" +
-          $"Availability: {metric_.description} (target: {availability_:P2})\n" +
-          status;
+      var rx = Telecom.Instance.network.GetStation(rx_name_);
+      string title = $"{rx.displaynodeName}: {status}.\n" +
+          $"Availability: {metric_.description}\nTarget: {availability_:P2};";
       title_tracker_.Add(title);
       if (last_title_ != title) {
         title_tracker_.UpdateContractWindow(title);
@@ -120,7 +121,6 @@ namespace σκοπός {
 
     protected override void OnUpdate() {
       base.OnUpdate();
-      var connection = Telecom.Instance.network.GetConnection(connection_);
       if (subparameters != null) {
         bool any_failed = false;
         bool any_incomplete = false;
@@ -186,44 +186,51 @@ namespace σκοπός {
     }
 
     protected override string GetTitle() {
+      Telecom.Log($"GetTitle for {connection_}");
       var connection = Telecom.Instance.network.GetConnection(connection_);
       string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
       double latency = connection.latency_limit;
       string pretty_latency = latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
+      Telecom.Log($"{data_rate}, at most {pretty_latency}");
 
       string title;
 
       if (connection is PointToMultipointConnection point_to_multipoint) {
+        Telecom.Log($"From {point_to_multipoint.tx_name}");
         var tx = Telecom.Instance.network.GetStation(point_to_multipoint.tx_name);
+        Telecom.Log($"aka {tx.displaynodeName}");
         if (subparameters != null) {
           title = $"Support broadcast from {tx.displaynodeName} to the " +
               $"following stations, with a data rate of {data_rate} and a " +
-              $"latency of at most {pretty_latency}.";
+              $"latency of at most {pretty_latency}";
         } else {
+          Telecom.Log($"To {point_to_multipoint.rx_names[0]}");
           var rx = Telecom.Instance.network.GetStation(
             point_to_multipoint.rx_names[0]);
+          Telecom.Log($"aka {rx.displaynodeName}");
           string status = point_to_multipoint.channel_services[0].basic.available
               ? "Currently connected"
               : "Currently disconnected";
           title = $"Support transmission from {tx.displaynodeName} to " +
               $"{rx.displaynodeName}, with a data rate of {data_rate} and a " +
-              $"latency of at most {pretty_latency}.\n" +
-              $"Availability: {metric.description} (target: {availability_:P2})\n" +
-              status;
+              $"latency of at most {pretty_latency}.\n{status}.\n" +
+              $"Availability: {metric.description};\nTarget: {availability_:P2}";
         }
       } else {
+        Telecom.Log("Duplex");
         var duplex = (DuplexConnection)connection;
+        Telecom.Log($"between {duplex.trx_names[0]} and {duplex.trx_names[1]}");
         var trx0 = Telecom.Instance.network.GetStation(duplex.trx_names[0]);
         var trx1 = Telecom.Instance.network.GetStation(duplex.trx_names[1]);
+        Telecom.Log($"aka {trx0.displaynodeName} and {trx1.displaynodeName}");
         string status = duplex.basic_service.available
             ? "Currently connected"
             : "Currently disconnected";
         title = $"Support duplex communication between {trx0.displaynodeName} " +
             $"and {trx1.displaynodeName}, with a one-way data rate of " +
             $"{data_rate} and a round-trip latency of at most " +
-            $"{pretty_latency}.\n" +
-            $"Availability: {metric.description} (target: {availability_:P2})\n" +
-            status;
+            $"{pretty_latency}.\n{status}.\n" +
+            $"Availability: {metric.description};\nTarget: {availability_:P2})";
       }
       title_tracker_.Add(title);
       if (last_title_ != title) {
@@ -262,7 +269,7 @@ namespace σκοπός {
         if (metric_ == null) {
           var connection = Telecom.Instance.network.GetConnection(connection_);
           if (connection is PointToMultipointConnection point_to_multipoint &&
-              point_to_multipoint.rx_names.Length > 1) {
+              point_to_multipoint.rx_names.Length == 1) {
             metric_ = MakeMetric();
             point_to_multipoint.channel_services[0].basic.RegisterMetric(metric_);
           } else if (connection is DuplexConnection duplex) {

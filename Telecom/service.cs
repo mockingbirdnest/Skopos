@@ -52,6 +52,7 @@ public class Service {
   }
 
   public void RegisterMetric(AvailabilityMetric metric) {
+    Telecom.Log($"Registering metric {metric.GetType().Name}");
     if (!metric.ComputableFrom(window_size)) {
       throw new ArgumentException($"Metric is not computable from {window_size} days");
     }

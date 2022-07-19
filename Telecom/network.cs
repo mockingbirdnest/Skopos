@@ -306,13 +306,13 @@ namespace σκοπός {
     }
 
     private void UpdateConnections() {
-      var network = CommNet.CommNetNetwork.Instance.CommNet as RACommNetwork;
+      var network = CommNet.CommNetNetwork.Instance?.CommNet as RACommNetwork;
       if (network == null) {
         Telecom.Log("No RA comm network");
         return;
       }
       foreach (var connection in connections_.Values) {
-        connection.AttemptConnection(routing_, this, Planetarium.GetUniversalTime());
+        connection.AttemptConnection(routing_, this, Telecom.Instance.last_universal_time);
       }
       active_links_.Clear();
     }
@@ -451,6 +451,6 @@ namespace σκοπός {
     public readonly List<CommNet.CommLink> active_links_ = new List<CommNet.CommLink>();
     public string[] names_ = { };
     public bool freeze_customers_;
-    public Routing routing_;
+    public Routing routing_ = new Routing();
   }
 }
