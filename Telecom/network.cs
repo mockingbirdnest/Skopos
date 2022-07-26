@@ -420,7 +420,12 @@ namespace σκοπός {
     public IEnumerable<Connection> connections => connections_.Values;
 
     public Connection GetConnection(string name) {
-      return connections_[name];
+      try {
+        return connections_[name];
+      } catch (KeyNotFoundException e) {
+        Telecom.Log($"No connection {name}\n{e}");
+        throw;
+      }
     }
 
     public RACommNetHome GetStation(string name) {
