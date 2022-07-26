@@ -153,6 +153,7 @@ public class PeriodAvailability
 
   public void UpdateTimeline(IEnumerable<double> daily_availabilities,
                              int last_day) {
+    started_ = last_day >= this.first_day_;
     partial = last_day < this.last_day_;
     availability = daily_availabilities
         .Skip(Math.Max(0, last_day_ - last_day))
@@ -169,19 +170,24 @@ public class PeriodAvailability
     get {
       DateTime start = RSS.epoch.AddDays(first_day_);
       DateTime end = RSS.epoch.AddDays(last_day_);
+      string qualifier =
+          partial ?  started_ ? " so far"
+                              : " (waiting for start of period)"
+                  : "";
       if (start.Day == 1 && start.AddMonths(1).AddDays(-1) == end) {
-        return $"{availability:P2} in {start:MMMM yyyy}";
+        return $"{availability:P2} in {start:MMMM yyyy}{qualifier}";
       } else if (start == end) {
-        return $"{availability:P2} on {start:yyyy-MM-dd}";
+        return $"{availability:P2} on {start:yyyy-MM-dd}{qualifier}";
       } else {
         return $@"{availability:P2} between {start:yyyy-MM-dd} and {
-            end:yyyy-MM-dd}";
+            end:yyyy-MM-dd}{qualifier}";
       }
     }
   }
 
   public double availability { get; private set; }
   public bool partial { get; private set; }
+  private bool started_ = false;
 
   private int first_day_;
   private int last_day_;
