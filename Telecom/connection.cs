@@ -130,7 +130,6 @@ namespace σκοπός {
       }
       for (int i = 0; i < channels.Length; ++i) {
         Routing.Channel channel = channels[i];
-        Telecom.Log($"{tx.displayName} to {rx[i].displayName}: {channel != null}");
         channel_services[i].basic.ReportAvailability(channel != null, t);
         foreach (var latency_service in
                  channel_services[i].improved_by_latency) {
