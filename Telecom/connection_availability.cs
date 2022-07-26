@@ -175,28 +175,22 @@ namespace σκοπός {
     }
 
     protected override string GetTitle() {
-      Telecom.Log($"GetTitle for {connection_}");
       var connection = Telecom.Instance.network.GetConnection(connection_);
       string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
       double latency = connection.latency_limit;
       string pretty_latency = latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
-      Telecom.Log($"{data_rate}, at most {pretty_latency}");
 
       string title;
 
       if (connection is PointToMultipointConnection point_to_multipoint) {
-        Telecom.Log($"From {point_to_multipoint.tx_name}");
         var tx = Telecom.Instance.network.GetStation(point_to_multipoint.tx_name);
-        Telecom.Log($"aka {tx.displaynodeName}");
         if (subparameters != null) {
           title = $"Support broadcast from {tx.displaynodeName} to the " +
               $"following stations, with a data rate of {data_rate} and a " +
               $"latency of at most {pretty_latency}";
         } else {
-          Telecom.Log($"To {point_to_multipoint.rx_names[0]}");
           var rx = Telecom.Instance.network.GetStation(
             point_to_multipoint.rx_names[0]);
-          Telecom.Log($"aka {rx.displaynodeName}");
           string status = point_to_multipoint.channel_services[0].basic.available
               ? "Currently connected"
               : "Currently disconnected";
@@ -206,12 +200,9 @@ namespace σκοπός {
               $"Availability: {metric.description}\nTarget: {availability_:P2}";
         }
       } else {
-        Telecom.Log("Duplex");
         var duplex = (DuplexConnection)connection;
-        Telecom.Log($"between {duplex.trx_names[0]} and {duplex.trx_names[1]}");
         var trx0 = Telecom.Instance.network.GetStation(duplex.trx_names[0]);
         var trx1 = Telecom.Instance.network.GetStation(duplex.trx_names[1]);
-        Telecom.Log($"aka {trx0.displaynodeName} and {trx1.displaynodeName}");
         string status = duplex.basic_service.available
             ? "Currently connected"
             : "Currently disconnected";
