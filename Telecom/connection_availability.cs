@@ -226,8 +226,13 @@ namespace σκοπός {
         DateTime date = Root.ContractState == Contract.State.Active
             ? RSS.epoch.AddSeconds(Root.DateAccepted)
             : RSS.current_time;
-        var effective_date =
-            new DateTime(date.Year, date.Month, 1).AddMonths(1);
+        // A contract can pertain to the current month if it is accepted within
+        // the first week, otherwise it starts on the next month.  This prevents
+        // repeating monthly contracts, which finish early in the month after
+        // the one to which they pertain, from skipping every other month.
+        var effective_date = date.Day <= 7
+            ? new DateTime(date.Year, date.Month, 1)
+            : new DateTime(date.Year, date.Month, 1).AddMonths(1);
         int offset = int.Parse(metric_definition_.GetValue("month"));
         return new PeriodAvailability(
             (effective_date.AddMonths(offset) - RSS.epoch).Days,
