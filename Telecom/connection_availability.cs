@@ -223,9 +223,12 @@ namespace σκοπός {
     private AvailabilityMetric MakeMetric() {
       string type = metric_definition_.GetValue("type");
       if (type == "monthly") {
-        DateTime date = Root.ContractState == Contract.State.Active
-            ? RSS.epoch.AddSeconds(Root.DateAccepted)
-            : RSS.current_time;
+        DateTime date =
+            (Root.ContractState == Contract.State.Active ||
+             Root.ContractState == Contract.State.Completed ||
+             Root.ContractState == Contract.State.Failed)
+                ? RSS.epoch.AddSeconds(Root.DateAccepted)
+                : RSS.current_time;
         // A contract can pertain to the current month if it is accepted within
         // the first week, otherwise it starts on the next month.  This prevents
         // repeating monthly contracts, which finish early in the month after
