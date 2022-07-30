@@ -111,7 +111,7 @@ public class PartialMovingWindowAvailability
 
   public double availability =>
       (full_days_total_availability_ + day_fraction_available_) /
-      (window_size + day_fraction_elapsed_);
+      (window_size - 1 + day_fraction_elapsed_);
   public bool partial => false;
 
   // Includes the partial day.
