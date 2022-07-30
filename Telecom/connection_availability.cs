@@ -352,7 +352,7 @@ namespace σκοπός {
                 point_to_multipoint.rx_names[i]);
               var monitor = new Monitor(
                 $@"{data_rate} {pretty_latency} connection from {
-                    rx.displaynodeName} to {rx.displaynodeName}",
+                    tx.displaynodeName} to {rx.displaynodeName}",
                 monitored_metric,
                 availability_);
               var subparameter = new BroadcastRxAvailability(

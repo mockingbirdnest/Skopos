@@ -20,7 +20,7 @@ namespace σκοπός {
           alerted_ = false;
           ScreenMessages.PostScreenMessage(
               $@"{service_name_}: availability is back to normal",
-              30, ScreenMessageStyle.UPPER_CENTER, XKCDColors.Orange);
+              30, ScreenMessageStyle.UPPER_CENTER, XKCDColors.Pear);
           KSP.UI.Screens.MessageSystem.Instance.AddMessage(
               new KSP.UI.Screens.MessageSystem.Message(
                   messageTitle: $"{service_name_} is back to normal",
