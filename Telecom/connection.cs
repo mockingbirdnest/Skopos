@@ -65,7 +65,7 @@ namespace σκοπός {
         double latency = latency_service.Key;
         Service service = latency_service.Value;
         bool available = circuit?.round_trip_latency <= latency;
-        basic_service.ReportAvailability(available, t);
+        service.ReportAvailability(available, t);
       }
     }
 
