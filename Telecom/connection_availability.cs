@@ -13,20 +13,25 @@ namespace σκοπός {
       var ok = base.Load(node);
       ok &= ConfigNodeUtil.ParseValue<string>(node, "connection", x => connection_ = x, this);
       ok &= ConfigNodeUtil.ParseValue<double>(node, "availability", x => availability_ = x, this);
-      var metric = ConfigNodeUtil.GetChildNode(node, "metric");
-      metric_ = metric;
+      metric_ = ConfigNodeUtil.GetChildNode(node, "metric");
+      monitoring_ = ConfigNodeUtil.GetChildNode(node, "monitoring");
       return ok;
     }
 
     public abstract ConnectionAvailability.Goal Goal();
 
     public override ContractParameter Generate(Contract contract) { 
-      return new ConnectionAvailability(connection_, availability_, Goal(), metric_);
+      return new ConnectionAvailability(connection_,
+                                        availability_,
+                                        Goal(),
+                                        metric_,
+                                        monitoring_);
     }
 
     private string connection_;
     private double availability_;
     private ConfigNode metric_;
+    private ConfigNode monitoring_;
   }
 
   public class AchieveConnectionAvailabilityFactory : ConnectionAvailabilityFactory {
@@ -44,12 +49,14 @@ namespace σκοπός {
   public class BroadcastRxAvailability : ContractParameter {
     public BroadcastRxAvailability(Service service,
                                    AvailabilityMetric metric,
+                                   Monitor monitor,
                                    string rx_name,
                                    double availability,
                                    ConnectionAvailability.Goal goal) {
       title_tracker_ = new TitleTracker(this);
       service_ = service;
       metric_ = metric;
+      monitor_ = monitor;
       rx_name_ = rx_name;
       availability_ = availability;
       goal_ = goal;
@@ -58,6 +65,9 @@ namespace σκοπός {
 
     protected override void OnUpdate() {
       base.OnUpdate();
+      if (goal_ == ConnectionAvailability.Goal.MAINTAIN) {
+        monitor_.AlertIfNeeded();
+      }
       if (state == ParameterState.Failed) {
         return;
       }
@@ -80,7 +90,7 @@ namespace σκοπός {
           ? "Currently connected"
           : "Currently disconnected";
       var rx = Telecom.Instance.network.GetStation(rx_name_);
-      string title = $"{rx.displaynodeName}: {status}.\n" +
+      string title = $"{rx.displaynodeName}: {status}, {metric_.description}.\n" +
           $"Availability: {metric_.description}\nTarget: {availability_:P2}";
       title_tracker_.Add(title);
       if (last_title_ != title) {
@@ -92,6 +102,7 @@ namespace σκοπός {
 
     private Service service_;
     private AvailabilityMetric metric_;
+    private Monitor monitor_;
     private string rx_name_;
     private double availability_;
     private ConnectionAvailability.Goal goal_;
@@ -110,13 +121,15 @@ namespace σκοπός {
     }
 
     public ConnectionAvailability(string connection, double availability, Goal goal,
-                                  ConfigNode metric_definition) {
+                                  ConfigNode metric_definition,
+                                  ConfigNode monitoring_definition) {
       title_tracker_ = new TitleTracker(this);
       connection_ = connection;
       availability_ = availability;
       goal_ = goal;
       disableOnStateChange = false;
       metric_definition_ = metric_definition;
+      monitoring_definition_ = monitoring_definition;
     }
 
     protected override void OnUpdate() {
@@ -165,6 +178,7 @@ namespace σκοπός {
         }
       }
       metric_definition_ = node.GetNode("metric");
+      monitoring_definition_ = node.GetNode("monitoring");
     }
 
     protected override void OnSave(ConfigNode node) {
@@ -172,6 +186,7 @@ namespace σκοπός {
       node.AddValue("availability", availability_);
       node.AddValue("goal", goal_);
       node.AddNode("metric", metric_definition_);
+      node.AddNode("monitoring", monitoring_definition_);
     }
 
     protected override string GetTitle() {
@@ -196,7 +211,7 @@ namespace σκοπός {
               : "Currently disconnected";
           title = $"Support transmission from {tx.displaynodeName} to " +
               $"{rx.displaynodeName}, with a data rate of {data_rate} and a " +
-              $"latency of at most {pretty_latency}.\n{status}.\n" +
+              $"latency of at most {pretty_latency}.\n{status}, {metric_.description}.\n" +
               $"Availability: {metric.description}\nTarget: {availability_:P2}";
         }
       } else {
@@ -209,8 +224,12 @@ namespace σκοπός {
         title = $"Support duplex communication between {trx0.displaynodeName} " +
             $"and {trx1.displaynodeName}, with a one-way data rate of " +
             $"{data_rate} and a round-trip latency of at most " +
-            $"{pretty_latency}.\n{status}.\n" +
+            $"{pretty_latency}.\n{status}, {metric_.description}.\n" +
             $"Availability: {metric.description}\nTarget: {availability_:P2}";
+        
+      }
+      if (goal_ == Goal.MAINTAIN) {
+        monitor?.AlertIfNeeded();
       }
       title_tracker_.Add(title);
       if (last_title_ != title) {
@@ -220,8 +239,8 @@ namespace σκοπός {
       return title;
     }
 
-    private AvailabilityMetric MakeMetric() {
-      string type = metric_definition_.GetValue("type");
+    private AvailabilityMetric MakeMetric(ConfigNode definition) {
+      string type = definition.GetValue("type");
       if (type == "monthly") {
         DateTime date =
             (Root.ContractState == Contract.State.Active ||
@@ -236,17 +255,20 @@ namespace σκοπός {
         var effective_date = date.Day <= 7
             ? new DateTime(date.Year, date.Month, 1)
             : new DateTime(date.Year, date.Month, 1).AddMonths(1);
-        int offset = int.Parse(metric_definition_.GetValue("month"));
+        int offset = int.Parse(definition.GetValue("month"));
         return new PeriodAvailability(
             (effective_date.AddMonths(offset) - RSS.epoch).Days,
             (effective_date.AddMonths(offset + 1).AddDays(-1) - RSS.epoch).Days);
       } else if (type == "fixed") {
         return new PeriodAvailability(
-            (DateTime.Parse(metric_definition_.GetValue("first")) - RSS.epoch).Days,
-            (DateTime.Parse(metric_definition_.GetValue("last")) - RSS.epoch).Days);
+            (DateTime.Parse(definition.GetValue("first")) - RSS.epoch).Days,
+            (DateTime.Parse(definition.GetValue("last")) - RSS.epoch).Days);
       } else if (type == "moving") {
         return new MovingWindowAvailability(
-            int.Parse(metric_definition_.GetValue("window")));
+            int.Parse(definition.GetValue("window")));
+      } else if (type == "partial_moving") {
+        return new PartialMovingWindowAvailability(
+            int.Parse(definition.GetValue("window")));
       } else {
         throw new ArgumentException($"Unexpected metric type {type}");
       }
@@ -258,10 +280,10 @@ namespace σκοπός {
           var connection = Telecom.Instance.network.GetConnection(connection_);
           if (connection is PointToMultipointConnection point_to_multipoint &&
               point_to_multipoint.rx_names.Length == 1) {
-            metric_ = MakeMetric();
+            metric_ = MakeMetric(metric_definition_);
             point_to_multipoint.channel_services[0].basic.RegisterMetric(metric_);
           } else if (connection is DuplexConnection duplex) {
-            metric_ = MakeMetric();
+            metric_ = MakeMetric(metric_definition_);
             duplex.basic_service.RegisterMetric(metric_);
           }
         }
@@ -269,20 +291,74 @@ namespace σκοπός {
       }
     }
 
+    private Monitor monitor {
+      get {
+        if (monitor_ == null) {
+          var connection = Telecom.Instance.network.GetConnection(connection_);
+          string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
+          double latency = connection.latency_limit;
+          string pretty_latency =
+              latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
+          if (connection is PointToMultipointConnection point_to_multipoint &&
+              point_to_multipoint.rx_names.Length == 1) {
+            var monitored_metric = MakeMetric(monitoring_definition_);
+            point_to_multipoint.channel_services[0].basic.RegisterMetric(
+                monitored_metric);
+            var tx = Telecom.Instance.network.GetStation(point_to_multipoint.tx_name);
+            var rx = Telecom.Instance.network.GetStation(
+              point_to_multipoint.rx_names[0]);
+            monitor_ = new Monitor(
+                $@"{data_rate} {pretty_latency} connection from {
+                    tx.displaynodeName} to {rx.displaynodeName}",
+                monitored_metric,
+                availability_);
+          } else if (connection is DuplexConnection duplex) {
+            var monitored_metric = MakeMetric(monitoring_definition_);
+            duplex.basic_service.RegisterMetric(monitored_metric);
+            var trx0 = Telecom.Instance.network.GetStation(duplex.trx_names[0]);
+            var trx1 = Telecom.Instance.network.GetStation(duplex.trx_names[1]);
+            monitor_ = new Monitor(
+                $@"{data_rate} {pretty_latency} duplex connection between {
+                    trx0.displaynodeName} and {trx1.displaynodeName}",
+                monitored_metric,
+                availability_);
+          }
+        }
+        return monitor_;
+      }
+    }
+
     private List<BroadcastRxAvailability> subparameters {
       get {
         if (subparameters_ == null) {
           var connection = Telecom.Instance.network.GetConnection(connection_);
+          string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
+          double latency = connection.latency_limit;
+          string pretty_latency =
+              latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
           if (connection is PointToMultipointConnection point_to_multipoint &&
           point_to_multipoint.rx_names.Length > 1) {
             subparameters_ = new List<BroadcastRxAvailability>();
+            var tx = Telecom.Instance.network.GetStation(
+                point_to_multipoint.tx_name);
             for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
-              var metric = MakeMetric();
+              var metric = MakeMetric(metric_definition_);
               point_to_multipoint.channel_services[i].basic.RegisterMetric(
                   metric);
+              var monitored_metric = MakeMetric(monitoring_definition_);
+              point_to_multipoint.channel_services[i].basic.RegisterMetric(
+                  monitored_metric);
+              var rx = Telecom.Instance.network.GetStation(
+                point_to_multipoint.rx_names[i]);
+              var monitor = new Monitor(
+                $@"{data_rate} {pretty_latency} connection from {
+                    rx.displaynodeName} to {rx.displaynodeName}",
+                monitored_metric,
+                availability_);
               var subparameter = new BroadcastRxAvailability(
                   point_to_multipoint.channel_services[i].basic,
                   metric,
+                  monitor,
                   point_to_multipoint.rx_names[i],
                   availability_,
                   goal_);
@@ -297,7 +373,9 @@ namespace σκοπός {
 
     private List<BroadcastRxAvailability> subparameters_;
     private ConfigNode metric_definition_;
+    private ConfigNode monitoring_definition_;
     private AvailabilityMetric metric_;
+    private Monitor monitor_;
     private string connection_;
     private double availability_;
     private Goal goal_;

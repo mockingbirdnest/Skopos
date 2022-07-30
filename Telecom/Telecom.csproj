@@ -83,7 +83,7 @@
     <Compile Include="connection_availability.cs" />
     <Compile Include="contract_not_completed_on_acceptance.cs" />
     <Compile Include="ground_segment_mutation.cs" />
-    <Compile Include="monitoring.cs" />
+    <Compile Include="monitor.cs" />
     <Compile Include="network.cs" />
     <Compile Include="routing.cs" />
     <Compile Include="time.cs" />

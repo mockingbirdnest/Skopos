@@ -72,20 +72,11 @@ public class Service {
     }
     node.AddValue("day_fraction_connected", day_fraction_available_);
     node.AddValue("day_fraction", day_fraction_);
-#if TODO // MOVE ALERTING TO ITS OWN CLASS
-    foreach (double availability in alerted_availabilities_) {
-      node.AddValue("alerted_availability", availability);
-    }
-#endif
   }
 
   public void Load(ConfigNode node) {
     daily_availability_ =
         new LinkedList<double>(node.GetValues("daily_availability").Select(double.Parse));
-#if TODO // MOVE ALERTING TO ITS OWN CLASS
-    alerted_availabilities_ = new HashSet<double>(
-        node.GetValues("alerted_availability").Select(double.Parse));
-#endif
     if (node.HasValue("current_day")) {
       current_day_ = double.Parse(node.GetValue("current_day"));
     }
