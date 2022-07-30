@@ -8,6 +8,30 @@ namespace σκοπός {
     public static DateTime current_time => epoch.AddSeconds(Telecom.Instance.last_universal_time);
   }
 
+  public class AfterDate : ContractRequirement {
+    public override bool LoadFromConfig(ConfigNode node) {
+      bool ok = base.LoadFromConfig(node);
+      ok &= ConfigNodeUtil.ParseValue<DateTime>(node, "date", date => date_ = date, this);
+      return ok;
+    }
+
+    public override void OnLoad(ConfigNode configNode) { }
+
+    public override void OnSave(ConfigNode node) {
+      node.AddValue("date", date_.ToString("O"));
+    }
+
+    public override bool RequirementMet(ConfiguredContract contractType) {
+      return RSS.current_time > date_;
+    }
+
+    protected override string RequirementText() {
+      return $"After {date_:s}";
+    }
+
+    private DateTime date_;
+  }
+
   public class BeforeDate : ContractRequirement {
     public override bool LoadFromConfig(ConfigNode node) {
       bool ok = base.LoadFromConfig(node);
