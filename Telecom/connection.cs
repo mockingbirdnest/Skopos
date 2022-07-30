@@ -60,6 +60,7 @@ namespace σκοπός {
             latency_limit, data_rate);
       }
       basic_service.ReportAvailability(circuit != null, t);
+      actual_latency = circuit?.round_trip_latency;
       foreach (var latency_service in improved_service_by_latency) {
         double latency = latency_service.Key;
         Service service = latency_service.Value;
@@ -92,6 +93,7 @@ namespace σκοπός {
 
     public double data_rate { get; }
     public double latency_limit { get; }
+    public double? actual_latency { get; private set;}
 
     public bool exclusive { get; }
 
@@ -135,6 +137,7 @@ namespace σκοπός {
       for (int i = 0; i < channels.Length; ++i) {
         Routing.Channel channel = channels[i];
         channel_services[i].basic.ReportAvailability(channel != null, t);
+        channel_services[i].actual_latency = channel?.latency;
         foreach (var latency_service in
                  channel_services[i].improved_by_latency) {
           double latency = latency_service.Key;
@@ -189,6 +192,7 @@ namespace σκοπός {
       public Service basic;
       public SortedDictionary<double, Service> improved_by_latency =
           new SortedDictionary<double, Service>();
+      public double? actual_latency { get; set; }
     }
 
     public ChannelService[] channel_services { get; private set; }

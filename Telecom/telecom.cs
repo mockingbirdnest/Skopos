@@ -146,9 +146,11 @@ namespace σκοπός {
                 $"{tx.displaynodeName} to",
                 UnityEngine.GUILayout.Width(25 * 30));
             for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
-              bool available =
-                  point_to_multipoint.channel_services[i].basic.available;
-              string status = available ? "Connected" : "Disconnected";
+              var services = point_to_multipoint.channel_services[i];
+              bool available = services.basic.available;
+              string status = available
+                  ? $"Connected ({services.actual_latency} s)"
+                  : "Disconnected";
               var rx = network.GetStation(point_to_multipoint.rx_names[i]);
               UnityEngine.GUILayout.Label(
                 $@"{rx.displaynodeName}: {status}");
@@ -203,7 +205,9 @@ namespace σκοπός {
             var trx0 = network.GetStation(duplex.trx_names[0]);
             var trx1 = network.GetStation(duplex.trx_names[1]);
             bool available = duplex.basic_service.available;
-            string status = available ? "Connected" : "Disconnected";
+            string status = available
+                ? $"Connected ({duplex.actual_latency} s)"
+                : "Disconnected";
             UnityEngine.GUILayout.Label(
                 $"Duplex between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
                 UnityEngine.GUILayout.Width(25 * 30));
