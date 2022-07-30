@@ -177,7 +177,9 @@ namespace σκοπός {
     protected override void OnLoad(ConfigNode node) {
       connection_ = node.GetValue("connection");
       availability_ = double.Parse(node.GetValue("availability"));
-      latency_ = double.Parse(node.GetValue("latency"));
+      latency_ = node.HasValue("latency")
+          ? double.Parse(node.GetValue("latency"))
+          : (double?)null;
       Enum.TryParse(node.GetValue("goal"), out goal_);
       foreach (ConfigNode subparameter in node.GetNodes("PARAM")) {
         if (subparameter.GetValue("name") ==
@@ -192,7 +194,9 @@ namespace σκοπός {
     protected override void OnSave(ConfigNode node) {
       node.AddValue("connection", connection_);
       node.AddValue("availability", availability_);
-      node.AddValue("latency", latency_);
+      if (latency_ != null) {
+        node.AddValue("latency", latency_.Value);
+      }
       node.AddValue("goal", goal_);
       node.AddNode("metric", metric_definition_);
       node.AddNode("monitoring", monitoring_definition_);
