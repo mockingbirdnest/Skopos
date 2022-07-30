@@ -31,7 +31,9 @@ public class Routing {
       this.forward = forward;
       this.backward = backward;
     }
-  }
+
+      public double round_trip_latency => forward.latency + backward.latency;
+    }
 
   public class NetworkUsage {
     public static NetworkUsage None = new NetworkUsage();

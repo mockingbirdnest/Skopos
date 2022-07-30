@@ -39,6 +39,11 @@ namespace σκοπός {
       data_rate = double.Parse(definition.GetValue("rate"));
       window_size_ = int.Parse(definition.GetValue("window"));
       basic_service = new Service(window_size_);
+      foreach (string improved_latency in
+               definition.GetValues("improved_latency")) {
+        improved_service_by_latency[double.Parse(improved_latency)] =
+            new Service(window_size_);
+      }
     }
 
     public void AttemptConnection(Routing routing, Network network, double t) {
@@ -58,8 +63,7 @@ namespace σκοπός {
       foreach (var latency_service in improved_service_by_latency) {
         double latency = latency_service.Key;
         Service service = latency_service.Value;
-        bool available =
-            circuit?.forward.latency + circuit?.backward.latency <= latency;
+        bool available = circuit?.round_trip_latency <= latency;
         basic_service.ReportAvailability(available, t);
       }
     }

@@ -13,6 +13,7 @@ namespace σκοπός {
       var ok = base.Load(node);
       ok &= ConfigNodeUtil.ParseValue<string>(node, "connection", x => connection_ = x, this);
       ok &= ConfigNodeUtil.ParseValue<double>(node, "availability", x => availability_ = x, this);
+      ok &= ConfigNodeUtil.ParseValue<double>(node, "latency", x => latency_ = x, this, defaultValue: double.PositiveInfinity);
       metric_ = ConfigNodeUtil.GetChildNode(node, "metric");
       monitoring_ = ConfigNodeUtil.GetChildNode(node, "monitoring");
       return ok;
@@ -23,6 +24,7 @@ namespace σκοπός {
     public override ContractParameter Generate(Contract contract) { 
       return new ConnectionAvailability(connection_,
                                         availability_,
+                                        latency_,
                                         Goal(),
                                         metric_,
                                         monitoring_);
@@ -30,6 +32,7 @@ namespace σκοπός {
 
     private string connection_;
     private double availability_;
+    private double latency_;
     private ConfigNode metric_;
     private ConfigNode monitoring_;
   }
@@ -120,12 +123,16 @@ namespace σκοπός {
       title_tracker_ = new TitleTracker(this);
     }
 
-    public ConnectionAvailability(string connection, double availability, Goal goal,
+    public ConnectionAvailability(string connection,
+                                  double availability,
+                                  double latency,
+                                  Goal goal,
                                   ConfigNode metric_definition,
                                   ConfigNode monitoring_definition) {
       title_tracker_ = new TitleTracker(this);
       connection_ = connection;
       availability_ = availability;
+      latency_ = latency == double.PositiveInfinity ? (double?)null : latency;
       goal_ = goal;
       disableOnStateChange = false;
       metric_definition_ = metric_definition;
@@ -170,6 +177,7 @@ namespace σκοπός {
     protected override void OnLoad(ConfigNode node) {
       connection_ = node.GetValue("connection");
       availability_ = double.Parse(node.GetValue("availability"));
+      latency_ = double.Parse(node.GetValue("latency"));
       Enum.TryParse(node.GetValue("goal"), out goal_);
       foreach (ConfigNode subparameter in node.GetNodes("PARAM")) {
         if (subparameter.GetValue("name") ==
@@ -184,6 +192,7 @@ namespace σκοπός {
     protected override void OnSave(ConfigNode node) {
       node.AddValue("connection", connection_);
       node.AddValue("availability", availability_);
+      node.AddValue("latency", latency_);
       node.AddValue("goal", goal_);
       node.AddNode("metric", metric_definition_);
       node.AddNode("monitoring", monitoring_definition_);
@@ -192,7 +201,7 @@ namespace σκοπός {
     protected override string GetTitle() {
       var connection = Telecom.Instance.network.GetConnection(connection_);
       string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
-      double latency = connection.latency_limit;
+      double latency = latency_ ?? connection.latency_limit;
       string pretty_latency = latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
 
       string title;
@@ -206,7 +215,11 @@ namespace σκοπός {
         } else {
           var rx = Telecom.Instance.network.GetStation(
             point_to_multipoint.rx_names[0]);
-          string status = point_to_multipoint.channel_services[0].basic.available
+          var services = point_to_multipoint.channel_services[0];
+          var service = latency_ == null
+              ? services.basic
+              : services.improved_by_latency[latency_.Value];
+          string status = service.available
               ? "Currently connected"
               : "Currently disconnected";
           title = $"Support transmission from {tx.displaynodeName} to " +
@@ -218,7 +231,10 @@ namespace σκοπός {
         var duplex = (DuplexConnection)connection;
         var trx0 = Telecom.Instance.network.GetStation(duplex.trx_names[0]);
         var trx1 = Telecom.Instance.network.GetStation(duplex.trx_names[1]);
-        string status = duplex.basic_service.available
+        var service = latency_ == null
+            ? duplex.basic_service
+            : duplex.improved_service_by_latency[latency_.Value];
+        string status = service.available
             ? "Currently connected"
             : "Currently disconnected";
         title = $"Support duplex communication between {trx0.displaynodeName} " +
@@ -281,10 +297,17 @@ namespace σκοπός {
           if (connection is PointToMultipointConnection point_to_multipoint &&
               point_to_multipoint.rx_names.Length == 1) {
             metric_ = MakeMetric(metric_definition_);
-            point_to_multipoint.channel_services[0].basic.RegisterMetric(metric_);
+            var services = point_to_multipoint.channel_services[0];
+            var service = latency_ == null
+                ? services.basic
+                : services.improved_by_latency[latency_.Value];
+            service.RegisterMetric(metric_);
           } else if (connection is DuplexConnection duplex) {
             metric_ = MakeMetric(metric_definition_);
-            duplex.basic_service.RegisterMetric(metric_);
+            var service = latency_ == null
+                ? duplex.basic_service
+                : duplex.improved_service_by_latency[latency_.Value];
+            service.RegisterMetric(metric_);
           }
         }
         return metric_;
@@ -296,14 +319,17 @@ namespace σκοπός {
         if (monitor_ == null) {
           var connection = Telecom.Instance.network.GetConnection(connection_);
           string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
-          double latency = connection.latency_limit;
+          double latency = latency_ ?? connection.latency_limit;
           string pretty_latency =
               latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
           if (connection is PointToMultipointConnection point_to_multipoint &&
               point_to_multipoint.rx_names.Length == 1) {
             var monitored_metric = MakeMetric(monitoring_definition_);
-            point_to_multipoint.channel_services[0].basic.RegisterMetric(
-                monitored_metric);
+            var services = point_to_multipoint.channel_services[0];
+            var service = latency_ == null
+                ? services.basic
+                : services.improved_by_latency[latency_.Value];
+            service.RegisterMetric(monitored_metric);
             var tx = Telecom.Instance.network.GetStation(point_to_multipoint.tx_name);
             var rx = Telecom.Instance.network.GetStation(
               point_to_multipoint.rx_names[0]);
@@ -314,7 +340,10 @@ namespace σκοπός {
                 availability_);
           } else if (connection is DuplexConnection duplex) {
             var monitored_metric = MakeMetric(monitoring_definition_);
-            duplex.basic_service.RegisterMetric(monitored_metric);
+            var service = latency_ == null
+                ? duplex.basic_service
+                : duplex.improved_service_by_latency[latency_.Value];
+            service.RegisterMetric(monitored_metric);
             var trx0 = Telecom.Instance.network.GetStation(duplex.trx_names[0]);
             var trx1 = Telecom.Instance.network.GetStation(duplex.trx_names[1]);
             monitor_ = new Monitor(
@@ -333,7 +362,7 @@ namespace σκοπός {
         if (subparameters_ == null) {
           var connection = Telecom.Instance.network.GetConnection(connection_);
           string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
-          double latency = connection.latency_limit;
+          double latency = latency_ ?? connection.latency_limit;
           string pretty_latency =
               latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
           if (connection is PointToMultipointConnection point_to_multipoint &&
@@ -343,11 +372,13 @@ namespace σκοπός {
                 point_to_multipoint.tx_name);
             for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
               var metric = MakeMetric(metric_definition_);
-              point_to_multipoint.channel_services[i].basic.RegisterMetric(
-                  metric);
+              var services = point_to_multipoint.channel_services[i];
+              var service = latency_ == null
+                  ? services.basic
+                  : services.improved_by_latency[latency_.Value];
+              service.RegisterMetric(metric);
               var monitored_metric = MakeMetric(monitoring_definition_);
-              point_to_multipoint.channel_services[i].basic.RegisterMetric(
-                  monitored_metric);
+              service.RegisterMetric(monitored_metric);
               var rx = Telecom.Instance.network.GetStation(
                 point_to_multipoint.rx_names[i]);
               var monitor = new Monitor(
@@ -356,7 +387,7 @@ namespace σκοπός {
                 monitored_metric,
                 availability_);
               var subparameter = new BroadcastRxAvailability(
-                  point_to_multipoint.channel_services[i].basic,
+                  service,
                   metric,
                   monitor,
                   point_to_multipoint.rx_names[i],
@@ -378,6 +409,7 @@ namespace σκοπός {
     private Monitor monitor_;
     private string connection_;
     private double availability_;
+    private double? latency_;
     private Goal goal_;
     private string last_title_;
     private TitleTracker title_tracker_;

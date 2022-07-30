@@ -205,12 +205,61 @@ namespace σκοπός {
             bool available = duplex.basic_service.available;
             string status = available ? "Connected" : "Disconnected";
             UnityEngine.GUILayout.Label(
-                $"Duplex between {trx0} and {trx1}: {status}",
+                $"Duplex between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
                 UnityEngine.GUILayout.Width(25 * 30));
+            if (!available) {
+              var circuit = network.routing_.FindCircuitInIsolation(
+                  trx0.Comm,
+                  trx1.Comm,
+                  round_trip_latency_limit: double.PositiveInfinity,
+                  connection.data_rate);
+              bool purely_latency_limited = circuit != null;
+              if (purely_latency_limited) {
+                UnityEngine.GUILayout.Label(
+                    $@"Latency-limited: available at {
+                        circuit.round_trip_latency} s");
+              }
+              circuit = network.routing_.FindCircuitInIsolation(
+                  trx0.Comm,
+                  trx1.Comm,
+                  connection.latency_limit,
+                  one_way_data_rate: 0);
+              bool purely_rate_limited = circuit != null;
+              if (purely_rate_limited) {
+                string max_data_rate = RATools.PrettyPrintDataRate(
+                    Math.Min(
+                        (from link in circuit.forward.links
+                          select link.max_data_rate).Min(),
+                        (from link in circuit.backward.links
+                          select link.max_data_rate).Min()));
+                UnityEngine.GUILayout.Label(
+                    $"Limited by data rate: available at {max_data_rate}");
+              }
+              if (!purely_rate_limited && !purely_latency_limited) {
+                circuit = network.routing_.FindCircuitInIsolation(
+                    trx0.Comm,
+                    trx1.Comm,
+                    round_trip_latency_limit: double.PositiveInfinity,
+                    one_way_data_rate: 0);
+                if (circuit != null) {
+                  string max_data_rate = RATools.PrettyPrintDataRate(
+                      Math.Min(
+                          (from link in circuit.forward.links
+                            select link.max_data_rate).Min(),
+                          (from link in circuit.backward.links
+                            select link.max_data_rate).Min()));
+                  UnityEngine.GUILayout.Label(
+                      "Limited by both latency and data rate: available at " +
+                      $"{max_data_rate}, {circuit.round_trip_latency} s");
+                }
+              }
+              if (connection.exclusive) {
+                // TODO(egg): analyze capacity issues.
+              }
+            }
           }
         }
         show_network_ = UnityEngine.GUILayout.Toggle(show_network_, "Show network");
-        show_active_links_ = UnityEngine.GUILayout.Toggle(show_active_links_, "Active links only");
         network.hide_off_network = show_network_;
       }
       UnityEngine.GUI.DragWindow();
@@ -227,9 +276,6 @@ namespace σκοπός {
       foreach (var station in network.AllGround()) {
         ui.OverrideShownCones.Add(station.Comm);
       }
-      if (show_active_links_) {
-        ui.OverrideShownLinks.AddRange(network.active_links_);
-      }
     }
 
 
@@ -237,7 +283,6 @@ namespace σκοπός {
 
     public Network network { get; private set; }
     private bool show_network_ = true;
-    private bool show_active_links_ = false;
     private bool show_window_ = true;
     private UnityEngine.Rect window_;
     public double last_universal_time => ut_;

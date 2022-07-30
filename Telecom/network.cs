@@ -315,7 +315,6 @@ namespace σκοπός {
       foreach (var connection in connections_.Values) {
         connection.AttemptConnection(routing_, this, Telecom.Instance.last_universal_time);
       }
-      active_links_.Clear();
     }
 
     private class Customer {
@@ -453,7 +452,6 @@ namespace σκοπός {
     private readonly List<Vector3d> nominal_satellite_locations_ = new List<Vector3d>();
     bool must_retarget_customers_ = false;
     private readonly Random random_ = new Random();
-    public readonly List<CommNet.CommLink> active_links_ = new List<CommNet.CommLink>();
     public string[] names_ = { };
     public bool freeze_customers_;
     public Routing routing_ = new Routing();
