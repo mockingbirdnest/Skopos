@@ -117,6 +117,7 @@ namespace σκοπός {
 
     private void DrawWindow(int id) {
       using (new UnityEngine.GUILayout.VerticalScope()) {
+        show_network_ = UnityEngine.GUILayout.Toggle(show_network_, "Show network");
         if (false) {
           using (new UnityEngine.GUILayout.HorizontalScope()) {
             if (UnityEngine.GUILayout.Button("Add nominal location") && FlightGlobals.ActiveVessel != null) {
@@ -129,13 +130,13 @@ namespace σκοπός {
             }
             network.freeze_customers_ = UnityEngine.GUILayout.Toggle(network.freeze_customers_, "Freeze customers");
           }
-        }
-        foreach (Vector3d location in network.GetNominalLocationLatLonAlts()) {
-          UnityEngine.GUILayout.Label($"{location.x:F2}°, {location.y:F2}°, {location.z / 1000:F0} km");
-        }
-        using (new UnityEngine.GUILayout.HorizontalScope()) {
-          if (int.TryParse(UnityEngine.GUILayout.TextField(network.customer_pool_size.ToString()), out int pool_size)) {
-            network.customer_pool_size = Math.Max(pool_size, 0);
+          foreach (Vector3d location in network.GetNominalLocationLatLonAlts()) {
+            UnityEngine.GUILayout.Label($"{location.x:F2}°, {location.y:F2}°, {location.z / 1000:F0} km");
+          }
+          using (new UnityEngine.GUILayout.HorizontalScope()) {
+            if (int.TryParse(UnityEngine.GUILayout.TextField(network.customer_pool_size.ToString()), out int pool_size)) {
+              network.customer_pool_size = Math.Max(pool_size, 0);
+            }
           }
         }
         foreach (var connection in network.connections) {
@@ -263,7 +264,6 @@ namespace σκοπός {
             }
           }
         }
-        show_network_ = UnityEngine.GUILayout.Toggle(show_network_, "Show network");
         network.hide_off_network = show_network_;
       }
       UnityEngine.GUI.DragWindow();
@@ -277,8 +277,18 @@ namespace σκοπός {
       if (ui == null) {
         return;
       }
-      foreach (var station in network.AllGround()) {
-        ui.OverrideShownCones.Add(station.Comm);
+      HashSet<RACommNode> stations =
+          (from station in network.AllGround() select station.Comm).ToHashSet();
+      foreach (var station in stations) {
+        ui.OverrideShownCones.Add(station);
+      }
+      foreach (var link in CommNet.CommNetNetwork.Instance.CommNet.Links) {
+        if (link.a is RACommNode node_a &&
+            (node_a.ParentVessel != null || stations.Contains(node_a)) &&
+            link.b is RACommNode node_b &&
+            (node_b.ParentVessel != null || stations.Contains(node_b))) {
+          ui.OverrideShownLinks.Add(link);
+        }
       }
     }
 
