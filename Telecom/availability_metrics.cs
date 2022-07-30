@@ -158,6 +158,7 @@ public class PeriodAvailability
     availability = daily_availabilities
         .Skip(Math.Max(0, last_day_ - last_day))
         .Take(last_day_ - first_day_ + 1)
+        .DefaultIfEmpty(0)
         .Average();
   }
 
@@ -170,10 +171,17 @@ public class PeriodAvailability
     get {
       DateTime start = RSS.epoch.AddDays(first_day_);
       DateTime end = RSS.epoch.AddDays(last_day_);
-      string qualifier =
-          partial ?  started_ ? " so far"
-                              : " (waiting for start of period)"
-                  : "";
+      if (!started_) {
+        if (start.Day == 1 && start.AddMonths(1).AddDays(-1) == end) {
+          return $"Will be measured in {start:MMMM yyyy}";
+        } else if (start == end) {
+          return $"Will be measured on {start:yyyy-MM-dd}";
+        } else {
+          return $@"Will be measured between {start:yyyy-MM-dd} and {
+              end:yyyy-MM-dd}";
+        }
+      }
+      string qualifier = partial ? " so far" : "";
       if (start.Day == 1 && start.AddMonths(1).AddDays(-1) == end) {
         return $"{availability:P2} in {start:MMMM yyyy}{qualifier}";
       } else if (start == end) {
