@@ -90,7 +90,7 @@ namespace σκοπός {
           ? "Currently connected"
           : "Currently disconnected";
       var rx = Telecom.Instance.network.GetStation(rx_name_);
-      string title = $"{rx.displaynodeName}: {status}, {metric_.description}.\n" +
+      string title = $"{rx.displaynodeName}: {status}, {monitor_.description}.\n" +
           $"Availability: {metric_.description}\nTarget: {availability_:P2}";
       title_tracker_.Add(title);
       if (last_title_ != title) {
@@ -211,7 +211,7 @@ namespace σκοπός {
               : "Currently disconnected";
           title = $"Support transmission from {tx.displaynodeName} to " +
               $"{rx.displaynodeName}, with a data rate of {data_rate} and a " +
-              $"latency of at most {pretty_latency}.\n{status}, {metric_.description}.\n" +
+              $"latency of at most {pretty_latency}.\n{status}, {monitor.description}.\n" +
               $"Availability: {metric.description}\nTarget: {availability_:P2}";
         }
       } else {
@@ -224,7 +224,7 @@ namespace σκοπός {
         title = $"Support duplex communication between {trx0.displaynodeName} " +
             $"and {trx1.displaynodeName}, with a one-way data rate of " +
             $"{data_rate} and a round-trip latency of at most " +
-            $"{pretty_latency}.\n{status}, {metric_.description}.\n" +
+            $"{pretty_latency}.\n{status}, {monitor.description}.\n" +
             $"Availability: {metric.description}\nTarget: {availability_:P2}";
         
       }
