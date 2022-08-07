@@ -283,7 +283,9 @@ namespace σκοπός {
         ui.OverrideShownCones.Add(station);
       }
       foreach (Vessel vessel in FlightGlobals.Vessels) {
-        ui.OverrideShownCones.Add((RACommNode)vessel.connection.Comm);
+        if (vessel.connection.Comm is RACommNode node) {
+          ui.OverrideShownCones.Add(node);
+        }
       }
       foreach (var link in CommNet.CommNetNetwork.Instance.CommNet.Links) {
         if (link.a is RACommNode node_a &&
