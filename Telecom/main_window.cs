@@ -54,9 +54,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
                 ? $"Connected ({services.actual_latency * 1000:N0} ms)"
                 : "Disconnected";
             UnityEngine.GUILayout.Label(
-              $@"{rx.displaynodeName}: {status}");
-            UnityEngine.GUILayout.Label(
-                $"{desired_data_rate}, ≤ {connection.latency_limit * 1000:N0} ms from {tx.displaynodeName} to {rx.displaynodeName}",
+                $"{desired_data_rate}, ≤ {connection.latency_limit * 1000:N0} ms from {tx.displaynodeName} to {rx.displaynodeName}: {status}",
               GUILayoutWidth(35));
           } else {
             UnityEngine.GUILayout.Label(
