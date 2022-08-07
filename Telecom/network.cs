@@ -235,7 +235,6 @@ namespace σκοπός {
           Telecom.Log($"No antenna for {pair.Key}");
           Telecom.Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
         }
-        station.Comm.RAAntennaList[0].Target = null;
       }
       //CreateGroundSegmentNodesIfNeeded();
       foreach (var customer in customers_.Values) {
@@ -378,7 +377,9 @@ namespace σκοπός {
         Vector3d station_position = body_.GetWorldSurfacePosition(lat, lon, alt);
         foreach (var antenna in template_.GetNodes("Antenna")) {
           var targeted_antenna = antenna.CreateCopy();
-          targeted_antenna.AddNode(network_.MakeTargetConfig(body_, station_position));
+          if (!targeted_antenna.HasNode(AntennaTarget.nodeName)) {
+            targeted_antenna.AddNode(network_.MakeTargetConfig(body_, station_position));
+          }
           node.AddNode(targeted_antenna);
         }
         new_station.Configure(node, body_);
