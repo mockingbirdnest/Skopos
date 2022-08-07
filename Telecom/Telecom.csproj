@@ -96,6 +96,7 @@
     </Compile>
     <Compile Include="availability_metrics.cs" />
     <Compile Include="fake_principia_logging.cs" />
+    <Compile Include="main_window.cs" />
     <Compile Include="service.cs" />
     <Compile Include="connection.cs" />
     <Compile Include="connection_availability.cs" />
