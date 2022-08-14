@@ -311,8 +311,24 @@ namespace σκοπός {
           from station in tx_only_ select station.Comm,
           from station in rx_only_ select station.Comm,
           from station in stations_.Values select station.Comm);
+      connection_to_contracts.Clear();
       foreach (var connection in connections_.Values) {
-        connection.AttemptConnection(routing_, this, Telecom.Instance.last_universal_time);
+        connection_to_contracts[connection] = new HashSet<Contracts.Contract>();
+      }
+      foreach (var contract in Contracts.ContractSystem.Instance.Contracts) {
+        if (contract.ContractState == Contracts.Contract.State.Active) {
+          foreach (var parameter in contract.AllParameters) {
+            if (parameter is ConnectionAvailability connection) {
+              connection_to_contracts[
+                  GetConnection(connection.connection_name)].Add(contract);
+            }
+          }
+        }
+      }
+      foreach (var connection in connections_.Values) {
+        if (connection_to_contracts[connection].Count > 0) {
+          connection.AttemptConnection(routing_, this, Telecom.Instance.last_universal_time);
+        }
       }
     }
 
@@ -456,5 +472,8 @@ namespace σκοπός {
     public string[] names_ = { };
     public bool freeze_customers_;
     public Routing routing_ = new Routing();
+
+    public Dictionary<Connection, HashSet<Contracts.Contract>> connection_to_contracts  { get; } =
+        new Dictionary<Connection, HashSet<Contracts.Contract>>();
   }
 }

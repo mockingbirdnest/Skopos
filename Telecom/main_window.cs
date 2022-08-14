@@ -43,6 +43,16 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
         }
       }
       foreach (var connection in telecom_.network.connections) {
+        string contracts;
+        if (telecom_.network.connection_to_contracts[connection].Count == 0) {
+          continue;
+        } else {
+          contracts = string.Join(
+              ", ",
+              from contract in telecom_.network.connection_to_contracts[connection]
+              select contract.Title);
+        }
+        UnityEngine.GUILayout.Label(contracts + ":");
         string desired_data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
         if (connection is PointToMultipointConnection point_to_multipoint) {
           var tx = telecom_.network.GetStation(point_to_multipoint.tx_name);

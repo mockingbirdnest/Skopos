@@ -406,6 +406,8 @@ namespace σκοπός {
       }
     }
 
+    public string connection_name => connection_;
+
     private List<BroadcastRxAvailability> subparameters_;
     private ConfigNode metric_definition_;
     private ConfigNode monitoring_definition_;
