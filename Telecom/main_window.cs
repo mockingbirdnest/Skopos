@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using RealAntennas;
+using static VehiclePhysics.Block;
 
 namespace σκοπός {
 
@@ -43,7 +44,6 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
         }
       }
       foreach (var connection in telecom_.network.connections) {
-        string contracts;
         if (telecom_.network.connection_to_contracts[connection].Count == 0) {
           if (inspectors_.ContainsKey(connection)) {
             inspectors_[connection].DisposeWindow();
@@ -54,14 +54,6 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
         if (!inspectors_.ContainsKey(connection)) {
           inspectors_[connection] = new ConnectionInspector(telecom_, connection);
         }
-        contracts = string.Join(
-            ", ",
-            from contract in telecom_.network.connection_to_contracts[connection]
-            select contract.Title);
-        using (new UnityEngine.GUILayout.HorizontalScope()) {
-          UnityEngine.GUILayout.Label(contracts + ":");
-          inspectors_[connection].RenderButton();
-        }
 
         if (connection is PointToMultipointConnection point_to_multipoint) {
           var tx = telecom_.network.GetStation(point_to_multipoint.tx_name);
@@ -70,14 +62,19 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
             var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[0]);
             bool available = services.basic.available;
             string status = available ? "OK" : "D/C";
-            UnityEngine.GUILayout.Label(
-                $"From {tx.displaynodeName} to {rx.displaynodeName}: {status}",
-              GUILayoutWidth(20));
+            using (new UnityEngine.GUILayout.HorizontalScope()) {
+              UnityEngine.GUILayout.Label(
+                  $"From {tx.displaynodeName} to {rx.displaynodeName}: {status}",
+                  GUILayoutWidth(15));
+              inspectors_[connection].RenderButton();
+            }
           } else {
-            UnityEngine.GUILayout.Label(
-                $"Broadcast from {tx.displaynodeName} to:",
-              GUILayoutWidth(20));
-
+            using (new UnityEngine.GUILayout.HorizontalScope()) {
+              UnityEngine.GUILayout.Label(
+                  $"Broadcast from {tx.displaynodeName} to:",
+                  GUILayoutWidth(15));
+              inspectors_[connection].RenderButton();
+            }
           }
           for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
             var services = point_to_multipoint.channel_services[i];
@@ -94,10 +91,18 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
           var trx1 = telecom_.network.GetStation(duplex.trx_names[1]);
           bool available = duplex.basic_service.available;
           string status = available ? "OK" : "D/C";
-          UnityEngine.GUILayout.Label(
-              $@"Duplex  between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
-              GUILayoutWidth(20));
+          using (new UnityEngine.GUILayout.HorizontalScope()) {
+            UnityEngine.GUILayout.Label(
+                $@"Duplex  between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
+                GUILayoutWidth(15));
+            inspectors_[connection].RenderButton();
+          }
         }
+        string contracts = string.Join(
+        ", ",
+            from contract in telecom_.network.connection_to_contracts[connection]
+            select contract.Title);
+          UnityEngine.GUILayout.Label("• For " + contracts);
       }
       telecom_.network.hide_off_network = show_network;
     }
