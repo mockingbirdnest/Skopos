@@ -136,6 +136,7 @@ namespace σκοπός {
       }
       for (int i = 0; i < channels.Length; ++i) {
         Routing.Channel channel = channels[i];
+        channel_services[i].channel = channel;
         channel_services[i].basic.ReportAvailability(channel != null, t);
         channel_services[i].actual_latency = channel?.latency;
         foreach (var latency_service in
@@ -188,7 +189,8 @@ namespace σκοπός {
       public ChannelService(int window_size) {
         basic = new Service(window_size);
       }
-
+      
+      public Routing.Channel channel;
       public Service basic;
       public SortedDictionary<double, Service> improved_by_latency =
           new SortedDictionary<double, Service>();

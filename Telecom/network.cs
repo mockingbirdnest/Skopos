@@ -311,22 +311,26 @@ namespace σκοπός {
           from station in tx_only_ select station.Comm,
           from station in rx_only_ select station.Comm,
           from station in stations_.Values select station.Comm);
-      connection_to_contracts.Clear();
-      foreach (var connection in connections_.Values) {
-        connection_to_contracts[connection] = new HashSet<Contracts.Contract>();
-      }
+      connections_by_contract.Clear();
+      contracted_connections.Clear();
       foreach (var contract in Contracts.ContractSystem.Instance.Contracts) {
         if (contract.ContractState == Contracts.Contract.State.Active) {
+          List<Connection> contract_connections = null;
           foreach (var parameter in contract.AllParameters) {
             if (parameter is ConnectionAvailability connection) {
-              connection_to_contracts[
-                  GetConnection(connection.connection_name)].Add(contract);
+              if (contract_connections == null &&
+                  !connections_by_contract.TryGetValue(contract, out contract_connections)) {
+                contract_connections = new List<Connection>();
+                connections_by_contract.Add(contract, contract_connections);
+              }
+              contracted_connections.Add(GetConnection(connection.connection_name));
+              contract_connections.Add(GetConnection(connection.connection_name));
             }
           }
         }
       }
       foreach (var connection in connections_.Values) {
-        if (connection_to_contracts[connection].Count > 0) {
+        if (contracted_connections.Contains(connection)) {
           connection.AttemptConnection(routing_, this, Telecom.Instance.last_universal_time);
         }
       }
@@ -473,7 +477,8 @@ namespace σκοπός {
     public bool freeze_customers_;
     public Routing routing_ = new Routing();
 
-    public Dictionary<Connection, HashSet<Contracts.Contract>> connection_to_contracts  { get; } =
-        new Dictionary<Connection, HashSet<Contracts.Contract>>();
+    public Dictionary<Contracts.Contract, List<Connection>> connections_by_contract  { get; } =
+        new Dictionary<Contracts.Contract, List<Connection>>();
+    public HashSet<Connection> contracted_connections { get; } = new HashSet<Connection>();
   }
 }

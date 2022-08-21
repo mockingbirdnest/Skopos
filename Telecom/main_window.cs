@@ -43,66 +43,88 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
           }
         }
       }
-      foreach (var connection in telecom_.network.connections) {
-        if (telecom_.network.connection_to_contracts[connection].Count == 0) {
-          if (inspectors_.ContainsKey(connection)) {
-            inspectors_[connection].DisposeWindow();
-            inspectors_.Remove(connection);
-          }
-          continue;
+      var inspected_connections = inspectors_.Keys.ToArray();
+      foreach (var inspected_connection in inspected_connections) {
+        if (!telecom_.network.contracted_connections.Contains(inspected_connection)) {
+          inspectors_[inspected_connection].DisposeWindow();
+          inspectors_.Remove(inspected_connection);
         }
-        if (!inspectors_.ContainsKey(connection)) {
-          inspectors_[connection] = new ConnectionInspector(telecom_, connection);
+      }
+      foreach (var contracted_connection in telecom_.network.contracted_connections) {
+       if (!inspectors_.ContainsKey(contracted_connection)) {
+          inspectors_.Add(
+              contracted_connection,
+              new ConnectionInspector(telecom_, contracted_connection));
+       }
+      }
+      foreach (var contract in open_contracts_.Keys.ToArray()) {
+        if (!telecom_.network.connections_by_contract.ContainsKey(contract)) {
+          open_contracts_.Remove(contract);
         }
-
-        if (connection is PointToMultipointConnection point_to_multipoint) {
-          var tx = telecom_.network.GetStation(point_to_multipoint.tx_name);
-          if (point_to_multipoint.channel_services.Length == 1) {
-            var services = point_to_multipoint.channel_services[0];
-            var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[0]);
-            bool available = services.basic.available;
-            string status = available ? "OK" : "D/C";
-            using (new UnityEngine.GUILayout.HorizontalScope()) {
-              UnityEngine.GUILayout.Label(
-                  $"From {tx.displaynodeName} to {rx.displaynodeName}: {status}",
-                  GUILayoutWidth(15));
-              inspectors_[connection].RenderButton();
-            }
-          } else {
-            using (new UnityEngine.GUILayout.HorizontalScope()) {
-              UnityEngine.GUILayout.Label(
-                  $"Broadcast from {tx.displaynodeName} to:",
-                  GUILayoutWidth(15));
-              inspectors_[connection].RenderButton();
-            }
+      }
+      foreach (var contract in telecom_.network.connections_by_contract.Keys) {
+        if (!open_contracts_.ContainsKey(contract)) {
+          open_contracts_.Add(contract, false);
+        }
+      }
+      foreach (var contract_connections in telecom_.network.connections_by_contract) {
+        var contract = contract_connections.Key;
+        var connections = contract_connections.Value;
+        using (new UnityEngine.GUILayout.HorizontalScope()) {
+          if (UnityEngine.GUILayout.Button(
+                open_contracts_[contract] ? "−" : "+", GUILayoutWidth(1))) {
+            open_contracts_[contract] = !open_contracts_[contract];
+            return;
           }
-          for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
-            var services = point_to_multipoint.channel_services[i];
-            bool available = services.basic.available;
-            string status = available ? "OK" : "D/C";
-            var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[i]);
-            if (point_to_multipoint.rx_names.Length > 1) {
-              UnityEngine.GUILayout.Label(
-                $@"— {rx.displaynodeName}: {status}");
+          UnityEngine.GUILayout.Label(contract.Title);
+        }
+        if (open_contracts_[contract]) {
+          foreach (var connection in connections) {
+            if (connection is PointToMultipointConnection point_to_multipoint) {
+              var tx = telecom_.network.GetStation(point_to_multipoint.tx_name);
+              if (point_to_multipoint.channel_services.Length == 1) {
+                var services = point_to_multipoint.channel_services[0];
+                var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[0]);
+                bool available = services.basic.available;
+                string status = available ? "OK" : "D/C";
+                using (new UnityEngine.GUILayout.HorizontalScope()) {
+                  UnityEngine.GUILayout.Label(
+                      $"From {tx.displaynodeName} to {rx.displaynodeName}: {status}",
+                      GUILayoutWidth(15));
+                  inspectors_[connection].RenderButton();
+                }
+              } else {
+                using (new UnityEngine.GUILayout.HorizontalScope()) {
+                  UnityEngine.GUILayout.Label(
+                      $"Broadcast from {tx.displaynodeName} to:",
+                      GUILayoutWidth(15));
+                  inspectors_[connection].RenderButton();
+                }
+              }
+              for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
+                var services = point_to_multipoint.channel_services[i];
+                bool available = services.basic.available;
+                string status = available ? "OK" : "Disconnected";
+                var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[i]);
+                if (point_to_multipoint.rx_names.Length > 1) {
+                  UnityEngine.GUILayout.Label(
+                    $@"— {rx.displaynodeName}: {status}");
+                }
+              }
+            } else if (connection is DuplexConnection duplex) {
+              var trx0 = telecom_.network.GetStation(duplex.trx_names[0]);
+              var trx1 = telecom_.network.GetStation(duplex.trx_names[1]);
+              bool available = duplex.basic_service.available;
+              string status = available ? "OK" : "D/C";
+              using (new UnityEngine.GUILayout.HorizontalScope()) {
+                UnityEngine.GUILayout.Label(
+                    $@"Duplex  between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
+                    GUILayoutWidth(15));
+                inspectors_[connection].RenderButton();
+              }
             }
-          }
-        } else if (connection is DuplexConnection duplex) {
-          var trx0 = telecom_.network.GetStation(duplex.trx_names[0]);
-          var trx1 = telecom_.network.GetStation(duplex.trx_names[1]);
-          bool available = duplex.basic_service.available;
-          string status = available ? "OK" : "D/C";
-          using (new UnityEngine.GUILayout.HorizontalScope()) {
-            UnityEngine.GUILayout.Label(
-                $@"Duplex  between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
-                GUILayoutWidth(15));
-            inspectors_[connection].RenderButton();
           }
         }
-        string contracts = string.Join(
-        ", ",
-            from contract in telecom_.network.connection_to_contracts[connection]
-            select contract.Title);
-          UnityEngine.GUILayout.Label("• For " + contracts);
       }
       telecom_.network.hide_off_network = show_network;
     }
@@ -110,7 +132,9 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
   }
 
   private Telecom telecom_;
-  private Dictionary<Connection, ConnectionInspector> inspectors_ =
+  private readonly Dictionary<Contracts.Contract, bool> open_contracts_ =
+      new Dictionary<Contracts.Contract, bool>();
+  private readonly Dictionary<Connection, ConnectionInspector> inspectors_ =
       new Dictionary<Connection, ConnectionInspector>();
 }
 
