@@ -13,6 +13,10 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
       : base(telecom) {
     telecom_ = telecom;
     connection_ = connection;
+    if (connection_ is PointToMultipointConnection point_to_multipoint &&
+        point_to_multipoint.rx_names.Length > 1) {
+      receiver_open_ = new bool[point_to_multipoint.rx_names.Length];
+    }
   }
 
   protected override string Title => "Connection inspector";
@@ -60,87 +64,90 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
         string status = available ? "Connected" : "Disconnected";
         var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[i]);
         Action<Action> indent = (Action x) => x();
-        if (point_to_multipoint.rx_names.Length > 1) {
-          indent = (Action x) => {
-            using (new UnityEngine.GUILayout.HorizontalScope()) {
-              UnityEngine.GUILayout.Space(Width(1));
-              x();
+        if (receiver_open_ != null) {
+          using (new UnityEngine.GUILayout.HorizontalScope()) {
+            if (UnityEngine.GUILayout.Button(
+                  receiver_open_[i] ? "−" : "+", GUILayoutWidth(1))) {
+              receiver_open_[i] = !receiver_open_[i];
+              Shrink();
+              return;
             }
-          };
-          UnityEngine.GUILayout.Label(
-            $@"— {rx.displaynodeName}: {status}");
-        }
-        if (available) {
-          ShowChannel(services.channel);
-        } else {
-          Routing.Channel[] channels;
-          bool capacity_limited = false;
-          if (connection_.exclusive) {
-            telecom_.network.routing_.FindChannelsInIsolation(
-                tx.Comm,
-                new[]{rx.Comm},
-                connection_.latency_limit,
-                connection_.data_rate,
-                out channels);
-            if (channels[0] != null) {
-              capacity_limited = true;
-              indent(() =>
-                UnityEngine.GUILayout.Label(
-                    $"→ Limited by capacity: available in isolation:"));
-              ShowChannel(channels[0]);
-            }
+            UnityEngine.GUILayout.Label($"{rx.displaynodeName}: {status}");
           }
-          if (!capacity_limited) {
-            telecom_.network.routing_.FindChannelsInIsolation(
-                tx.Comm,
-                new[]{rx.Comm},
-                latency_limit: double.PositiveInfinity,
-                connection_.data_rate,
-                out channels);
-            bool purely_latency_limited = channels[0] != null;
-            if (purely_latency_limited) {
-              indent(() =>
-                UnityEngine.GUILayout.Label(
-                    $"→ Latency-limited: available at {channels[0].latency * 1000:N0} ms:"));
+        }
+        if (receiver_open_?[i] != false) {
+          if (available) {
+            ShowChannel(services.channel);
+          } else {
+            Routing.Channel[] channels;
+            bool capacity_limited = false;
+            if (connection_.exclusive) {
+              telecom_.network.routing_.FindChannelsInIsolation(
+                  tx.Comm,
+                  new[]{rx.Comm},
+                  connection_.latency_limit,
+                  connection_.data_rate,
+                  out channels);
+              if (channels[0] != null) {
+                capacity_limited = true;
+                indent(() =>
+                  UnityEngine.GUILayout.Label(
+                      $"→ Limited by capacity: available in isolation:"));
                 ShowChannel(channels[0]);
+              }
             }
-            telecom_.network.routing_.FindChannelsInIsolation(
-                tx.Comm,
-                new[]{rx.Comm},
-                connection_.latency_limit,
-                data_rate: 0,
-                out channels);
-            bool purely_rate_limited = channels[0] != null;
-            if (purely_rate_limited) {
-              string max_data_rate = RATools.PrettyPrintDataRate(
-                  (from link in channels[0].links
-                    select link.max_data_rate).Min());
-              indent(() =>
-                UnityEngine.GUILayout.Label(
-                    $"→ Limited by data rate: available at {max_data_rate}"));
-              ShowChannel(channels[0]);
-            }
-            if (!purely_rate_limited && !purely_latency_limited) {
+            if (!capacity_limited) {
               telecom_.network.routing_.FindChannelsInIsolation(
                   tx.Comm,
                   new[]{rx.Comm},
                   latency_limit: double.PositiveInfinity,
+                  connection_.data_rate,
+                  out channels);
+              bool purely_latency_limited = channels[0] != null;
+              if (purely_latency_limited) {
+                indent(() =>
+                  UnityEngine.GUILayout.Label(
+                      $"→ Latency-limited: available at {channels[0].latency * 1000:N0} ms:"));
+                  ShowChannel(channels[0]);
+              }
+              telecom_.network.routing_.FindChannelsInIsolation(
+                  tx.Comm,
+                  new[]{rx.Comm},
+                  connection_.latency_limit,
                   data_rate: 0,
                   out channels);
-              if (channels[0] != null) {
+              bool purely_rate_limited = channels[0] != null;
+              if (purely_rate_limited) {
                 string max_data_rate = RATools.PrettyPrintDataRate(
                     (from link in channels[0].links
                       select link.max_data_rate).Min());
                 indent(() =>
                   UnityEngine.GUILayout.Label(
-                      "→ Limited by both latency and data rate: available at " +
-                      $"{max_data_rate}, {channels[0].latency * 1000:N0} ms"));
+                      $"→ Limited by data rate: available at {max_data_rate}"));
                 ShowChannel(channels[0]);
+              }
+              if (!purely_rate_limited && !purely_latency_limited) {
+                telecom_.network.routing_.FindChannelsInIsolation(
+                    tx.Comm,
+                    new[]{rx.Comm},
+                    latency_limit: double.PositiveInfinity,
+                    data_rate: 0,
+                    out channels);
+                if (channels[0] != null) {
+                  string max_data_rate = RATools.PrettyPrintDataRate(
+                      (from link in channels[0].links
+                        select link.max_data_rate).Min());
+                  indent(() =>
+                    UnityEngine.GUILayout.Label(
+                        "→ Limited by both latency and data rate: available at " +
+                        $"{max_data_rate}, {channels[0].latency * 1000:N0} ms"));
+                  ShowChannel(channels[0]);
+                }
               }
             }
           }
+          ShowChannel(services.channel);
         }
-        ShowChannel(services.channel);
       }
     } else if (connection_ is DuplexConnection duplex) {
       var trx0 = telecom_.network.GetStation(duplex.trx_names[0]);
@@ -214,6 +221,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
 
     private Telecom telecom_;
     private Connection connection_;
+    private bool[] receiver_open_;
 }
 
 }
