@@ -47,7 +47,6 @@ namespace σκοπός {
     }
 
     public void AttemptConnection(Routing routing, Network network, double t) {
-      Routing.Circuit circuit;
       if (exclusive) {
         circuit = routing.FindAndUseAvailableCircuit(
             network.GetStation(trx_names[0]).Comm,
@@ -98,7 +97,8 @@ namespace σκοπός {
     public bool exclusive { get; }
 
     public string[] trx_names { get; }
-
+    
+    public Routing.Circuit circuit { get; private set; }
     public Service basic_service;
     public SortedDictionary<double, Service> improved_service_by_latency {
       get;

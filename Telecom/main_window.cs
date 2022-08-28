@@ -87,7 +87,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
                 var services = point_to_multipoint.channel_services[0];
                 var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[0]);
                 bool available = services.basic.available;
-                string status = available ? "OK" : "D/C";
+                string status = available ? "OK" : "Disconnected";
                 using (new UnityEngine.GUILayout.HorizontalScope()) {
                   UnityEngine.GUILayout.Label(
                       $"From {tx.displaynodeName} to {rx.displaynodeName}: {status}",
@@ -116,7 +116,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
               var trx0 = telecom_.network.GetStation(duplex.trx_names[0]);
               var trx1 = telecom_.network.GetStation(duplex.trx_names[1]);
               bool available = duplex.basic_service.available;
-              string status = available ? "OK" : "D/C";
+              string status = available ? "OK" : "Disconnected";
               using (new UnityEngine.GUILayout.HorizontalScope()) {
                 UnityEngine.GUILayout.Label(
                     $@"Duplex  between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",

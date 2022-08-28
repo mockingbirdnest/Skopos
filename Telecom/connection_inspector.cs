@@ -21,6 +21,20 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
 
   protected override string Title => "Connection inspector";
 
+  private void ShowCircuit(Routing.Circuit circuit) {
+    if (circuit == null) {
+      return;
+    }
+    using (new UnityEngine.GUILayout.HorizontalScope()) {
+      using (new UnityEngine.GUILayout.VerticalScope()) { 
+        ShowChannel(circuit.forward);
+      }
+      using (new UnityEngine.GUILayout.VerticalScope()) {
+        ShowChannel(circuit.backward);
+      }
+    }
+  }
+
   private void ShowChannel(Routing.Channel channel) {
     if (channel == null) {
         return;
@@ -63,7 +77,6 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
         bool available = services.basic.available;
         string status = available ? "Connected" : "Disconnected";
         var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[i]);
-        Action<Action> indent = (Action x) => x();
         if (receiver_open_ != null) {
           using (new UnityEngine.GUILayout.HorizontalScope()) {
             if (UnityEngine.GUILayout.Button(
@@ -90,9 +103,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                   out channels);
               if (channels[0] != null) {
                 capacity_limited = true;
-                indent(() =>
-                  UnityEngine.GUILayout.Label(
-                      $"→ Limited by capacity: available in isolation:"));
+                UnityEngine.GUILayout.Label(
+                      $"→ Limited by capacity: available in isolation:");
                 ShowChannel(channels[0]);
               }
             }
@@ -105,9 +117,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                   out channels);
               bool purely_latency_limited = channels[0] != null;
               if (purely_latency_limited) {
-                indent(() =>
-                  UnityEngine.GUILayout.Label(
-                      $"→ Latency-limited: available at {channels[0].latency * 1000:N0} ms:"));
+                UnityEngine.GUILayout.Label(
+                    $"→ Latency-limited: available at {channels[0].latency * 1000:N0} ms:");
                   ShowChannel(channels[0]);
               }
               telecom_.network.routing_.FindChannelsInIsolation(
@@ -121,9 +132,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                 string max_data_rate = RATools.PrettyPrintDataRate(
                     (from link in channels[0].links
                       select link.max_data_rate).Min());
-                indent(() =>
-                  UnityEngine.GUILayout.Label(
-                      $"→ Limited by data rate: available at {max_data_rate}"));
+                UnityEngine.GUILayout.Label(
+                    $"→ Limited by data rate: available at {max_data_rate}");
                 ShowChannel(channels[0]);
               }
               if (!purely_rate_limited && !purely_latency_limited) {
@@ -137,19 +147,26 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                   string max_data_rate = RATools.PrettyPrintDataRate(
                       (from link in channels[0].links
                         select link.max_data_rate).Min());
-                  indent(() =>
-                    UnityEngine.GUILayout.Label(
-                        "→ Limited by both latency and data rate: available at " +
-                        $"{max_data_rate}, {channels[0].latency * 1000:N0} ms"));
+                  UnityEngine.GUILayout.Label(
+                      "→ Limited by both latency and data rate: available at " +
+                      $"{max_data_rate}, {channels[0].latency * 1000:N0} ms");
                   ShowChannel(channels[0]);
                 }
               }
             }
           }
-          ShowChannel(services.channel);
         }
       }
     } else if (connection_ is DuplexConnection duplex) {
+      UnityEngine.GUILayout.Label(
+          $"One-way data rate: {desired_data_rate}");
+      UnityEngine.GUILayout.Label(
+          $"Round-trip latency limit: {connection_.latency_limit * 1000:N0} ms");
+      foreach (double latency in
+               duplex.improved_service_by_latency.Keys) {
+        UnityEngine.GUILayout.Label(
+            $"Improved service round-trip latency: {latency * 1000:N0} ms");
+      }
       var trx0 = telecom_.network.GetStation(duplex.trx_names[0]);
       var trx1 = telecom_.network.GetStation(duplex.trx_names[1]);
       bool available = duplex.basic_service.available;
@@ -157,43 +174,64 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
           ? $"Connected ({duplex.actual_latency * 1000:N0} ms)"
           : "Disconnected";
       UnityEngine.GUILayout.Label(
-          $@"Duplex ({desired_data_rate} one-way, ≤ {connection_.latency_limit * 1000:N0} ms round-trip) between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
-          GUILayoutWidth(35));
-      if (!available) {
-        var circuit = telecom_.network.routing_.FindCircuitInIsolation(
-            trx0.Comm,
-            trx1.Comm,
-            round_trip_latency_limit: double.PositiveInfinity,
-            connection_.data_rate);
-        bool purely_latency_limited = circuit != null;
-        if (purely_latency_limited) {
-          UnityEngine.GUILayout.Label(
-              $@"→ Latency-limited: available at {
-                  circuit.round_trip_latency * 1000:N0} ms");
+          $@"Duplex between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}");
+      if (available) {
+        ShowCircuit(duplex.circuit);
+      } else {
+        Routing.Circuit circuit;
+        bool capacity_limited = false;
+        if (connection_.exclusive) {
+          circuit = telecom_.network.routing_.FindCircuitInIsolation(
+              trx0.Comm,
+              trx1.Comm,
+              connection_.latency_limit,
+              connection_.data_rate);
+          if (circuit != null) {
+            capacity_limited = true;
+            UnityEngine.GUILayout.Label(
+                  $"→ Limited by capacity: available in isolation:");
+            ShowCircuit(circuit);
+          } else {
+            telecom_.network.routing_.FindChannelsInIsolation(
+                trx0.Comm,
+                new[] { trx1.Comm },
+                connection_.latency_limit,
+                connection_.data_rate,
+                out Routing.Channel[] forward);
+            telecom_.network.routing_.FindChannelsInIsolation(
+                trx1.Comm,
+                new[] { trx0.Comm },
+                connection_.latency_limit,
+                connection_.data_rate,
+                out Routing.Channel[] backward);
+            if (forward[0] != null && backward[0] != null) {
+              capacity_limited = true;
+              UnityEngine.GUILayout.Label(
+                    $"→ Limited by capacity: available in simplex:");
+              ShowCircuit(new Routing.Circuit(forward[0], backward[0]));
+            }
+          }
         }
-        circuit = telecom_.network.routing_.FindCircuitInIsolation(
-            trx0.Comm,
-            trx1.Comm,
-            connection_.latency_limit,
-            one_way_data_rate: 0);
-        bool purely_rate_limited = circuit != null;
-        if (purely_rate_limited) {
-          string max_data_rate = RATools.PrettyPrintDataRate(
-              Math.Min(
-                  (from link in circuit.forward.links
-                    select link.max_data_rate).Min(),
-                  (from link in circuit.backward.links
-                    select link.max_data_rate).Min()));
-          UnityEngine.GUILayout.Label(
-              $"→ Limited by data rate: available at {max_data_rate}");
-        }
-        if (!purely_rate_limited && !purely_latency_limited) {
+        if (!capacity_limited) {
           circuit = telecom_.network.routing_.FindCircuitInIsolation(
               trx0.Comm,
               trx1.Comm,
               round_trip_latency_limit: double.PositiveInfinity,
+              connection_.data_rate);
+          bool purely_latency_limited = circuit != null;
+          if (purely_latency_limited) {
+            UnityEngine.GUILayout.Label(
+                $@"→ Latency-limited: available at {
+                    circuit.round_trip_latency * 1000:N0} ms");
+            ShowCircuit(circuit);
+          }
+          circuit = telecom_.network.routing_.FindCircuitInIsolation(
+              trx0.Comm,
+              trx1.Comm,
+              connection_.latency_limit,
               one_way_data_rate: 0);
-          if (circuit != null) {
+          bool purely_rate_limited = circuit != null;
+          if (purely_rate_limited) {
             string max_data_rate = RATools.PrettyPrintDataRate(
                 Math.Min(
                     (from link in circuit.forward.links
@@ -201,12 +239,28 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                     (from link in circuit.backward.links
                       select link.max_data_rate).Min()));
             UnityEngine.GUILayout.Label(
-                "→ Limited by both latency and data rate: available at " +
-                $"{max_data_rate}, {circuit.round_trip_latency * 1000:N0} ms");
+                $"→ Limited by data rate: available at {max_data_rate}");
+            ShowCircuit(circuit);
           }
-        }
-        if (connection_.exclusive) {
-          // TODO(egg): analyze capacity issues.
+          if (!purely_rate_limited && !purely_latency_limited) {
+            circuit = telecom_.network.routing_.FindCircuitInIsolation(
+                trx0.Comm,
+                trx1.Comm,
+                round_trip_latency_limit: double.PositiveInfinity,
+                one_way_data_rate: 0);
+            if (circuit != null) {
+              string max_data_rate = RATools.PrettyPrintDataRate(
+                  Math.Min(
+                      (from link in circuit.forward.links
+                        select link.max_data_rate).Min(),
+                      (from link in circuit.backward.links
+                        select link.max_data_rate).Min()));
+              UnityEngine.GUILayout.Label(
+                  "→ Limited by both latency and data rate: available at " +
+                  $"{max_data_rate}, {circuit.round_trip_latency * 1000:N0} ms");
+              ShowCircuit(circuit);
+            }
+          }
         }
       }
     }
