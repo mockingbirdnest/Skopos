@@ -50,6 +50,8 @@ namespace σκοπός {
         RealAntennas.RACommNetScenario.GroundStationTechLevel = RealAntennas.RACommNetScenario.MaxTL;
       }
 
+      PresetManager.Instance.ActivePreset.GeneralSettings.Enabled = false;
+
       if (now.Year > current_year) {
         current_year = now.Year;
 
