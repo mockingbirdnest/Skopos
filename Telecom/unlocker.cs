@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using KerbalConstructionTime;
+using RP0.DataTypes;
+using UnityEngine;
 
 namespace σκοπός {
   [KSPScenario(
@@ -46,16 +49,7 @@ namespace σκοπός {
         ScenarioUpgradeableFacilities.Instance.CheatFacilities();
         RealAntennas.RACommNetScenario.GroundStationTechLevel = RealAntennas.RACommNetScenario.MaxTL;
       }
-      foreach (KerbalConstructionTime.KSCItem ksc
-               in KerbalConstructionTime.KCTGameStates.KSCs) {
-        ksc.VABUpgrades[0] = 1729;
-        ksc.SPHUpgrades[0] = 1729;
-        ksc.RDUpgrades[0] = 1729;
-        ksc.RDUpgrades[1] = 1729;
-        if (ksc.LaunchPads[0].level != 6) {
-          ksc.LaunchPads[0] = new KerbalConstructionTime.KCT_LaunchPad("pad", 6);
-        }
-      }
+
       if (now.Year > current_year) {
         current_year = now.Year;
 
