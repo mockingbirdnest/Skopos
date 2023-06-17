@@ -214,16 +214,15 @@ namespace σκοπός {
         }
       }
       var ui = RACommNetUI.Instance as RACommNetUI;
-      if (!ground_stations_have_visibility_callback_ &&
-          ui?.groundStationSiteNodes.Count > 0) {
-        foreach (var site in ui.groundStationSiteNodes) {
-          var station_comm = ((GroundStationSiteNode)site.siteObject).node;
-          bool on_network = stations_.Values.Any(station => station.Comm == station_comm);
-          if (on_network) {
-            site.wayPoint.node.OnUpdateVisible += OnUpdateGroundStationVisible;
-          } else {
-            site.wayPoint.node.OnUpdateVisible += OnUpdateOffNetworkStationVisible;
-          }
+      foreach (var site in ui.groundStationSiteNodes) {
+        var station_comm = ((GroundStationSiteNode)site.siteObject).node;
+        bool on_network = stations_.Values.Any(station => station.Comm == station_comm);
+        site.wayPoint.node.OnUpdateVisible -= OnUpdateGroundStationVisible;
+        site.wayPoint.node.OnUpdateVisible -= OnUpdateOffNetworkStationVisible;
+        if (on_network) {
+          site.wayPoint.node.OnUpdateVisible += OnUpdateGroundStationVisible;
+        } else {
+          site.wayPoint.node.OnUpdateVisible += OnUpdateOffNetworkStationVisible;
         }
       }
       if (!all_stations_good) {
@@ -471,7 +470,6 @@ namespace σκοπός {
     public int customer_pool_size { get; set; }
     public bool hide_off_network { get; set; }
 
-    private bool ground_stations_have_visibility_callback_ = false;
     private readonly SortedDictionary<string, Customer> customers_ =
         new SortedDictionary<string, Customer>();
     private readonly SortedDictionary<string, RACommNetHome> stations_ =
