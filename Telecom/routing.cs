@@ -37,8 +37,11 @@ public class Routing {
 
   public class NetworkUsage {
     public static NetworkUsage None = new NetworkUsage();
+    // Normalized on [0, 1]; 
     public virtual double TxPowerUsage(RealAntennaDigital tx) { return 0; }
+    // In Hz.
     public virtual double SpectrumUsage(RealAntennaDigital trx) { return 0; }
+    public virtual IEnumerable<RealAntennaDigital> Transmitters() { yield break; }
     protected NetworkUsage() {}
   }
 
@@ -292,9 +295,17 @@ public class Routing {
       return usage;
     }
 
-    public override double SpectrumUsage(RealAntennaDigital rx) { 
+    public override double SpectrumUsage(RealAntennaDigital rx) {
       spectrum_usage_.TryGetValue(rx, out double usage);
       return usage;
+    }
+
+    public override IEnumerable<RealAntennaDigital> Transmitters() {
+      foreach (var antenna in tx_power_usage_.Keys) {
+        if (antenna is RealAntennaDigital digital) {
+          yield return digital;
+        }
+      }
     }
 
     // The links must all share the same tx antenna and tech level.
@@ -315,7 +326,7 @@ public class Routing {
       if (!tx_power_usage_.ContainsKey(tx_antenna)) {
         tx_power_usage_.Add(tx_antenna, 0);
       }
-      double usage = (from link in links 
+      double usage = (from link in links
                       select link.TxPowerUsageFromDataRate(data_rate)).Max();
       tx_power_usage_[tx_antenna] += usage;
     }
@@ -398,7 +409,7 @@ public class Routing {
     // doesn’t matter that much.
     public bool is_at_tx_tech_level =>
         tech_level == tx_antenna.TechLevelInfo.Level;
-    public RealAntennaDigital lowest_tech_antenna => 
+    public RealAntennaDigital lowest_tech_antenna =>
         is_at_tx_tech_level ? tx_antenna : rx_antenna;
     public RAModulator modulator => lowest_tech_antenna.modulator;
     public RealAntennas.Antenna.Encoder encoder => lowest_tech_antenna.Encoder;

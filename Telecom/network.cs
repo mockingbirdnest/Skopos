@@ -250,6 +250,17 @@ namespace σκοπός {
         must_retarget_customers_ = false;
       }
       UpdateConnections();
+      foreach (RealAntennaDigital antenna in routing_.usage.Transmitters()) {
+        if (antenna?.Parent?.vessel is Vessel vessel) {
+          Kerbalism.ConsumeResource(
+              vessel,
+              "ElectricCharge",
+              // PowerDrawLinear is in mW, ElectricCharge is in kJ.
+              routing_.usage.TxPowerUsage(antenna) * antenna.PowerDrawLinear *
+              1e-6 * TimeWarp.fixedDeltaTime,
+              "Σκοπός telecom");
+        }
+      }
     }
 
     private void CreateGroundSegmentNodesIfNeeded() {
