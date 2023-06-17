@@ -213,16 +213,17 @@ namespace σκοπός {
           RACommNetScenario.GroundStations[node_name] = stations_[name];
         }
       }
-      var ui = RACommNetUI.Instance as RACommNetUI;
-      foreach (var site in ui.groundStationSiteNodes) {
-        var station_comm = ((GroundStationSiteNode)site.siteObject).node;
-        bool on_network = stations_.Values.Any(station => station.Comm == station_comm);
-        site.wayPoint.node.OnUpdateVisible -= OnUpdateGroundStationVisible;
-        site.wayPoint.node.OnUpdateVisible -= OnUpdateOffNetworkStationVisible;
-        if (on_network) {
-          site.wayPoint.node.OnUpdateVisible += OnUpdateGroundStationVisible;
-        } else {
-          site.wayPoint.node.OnUpdateVisible += OnUpdateOffNetworkStationVisible;
+      if (RACommNetUI.Instance is RACommNetUI ui) {
+        foreach (var site in ui.groundStationSiteNodes) {
+          var station_comm = ((GroundStationSiteNode)site.siteObject).node;
+          bool on_network = stations_.Values.Any(station => station.Comm == station_comm);
+          site.wayPoint.node.OnUpdateVisible -= OnUpdateGroundStationVisible;
+          site.wayPoint.node.OnUpdateVisible -= OnUpdateOffNetworkStationVisible;
+          if (on_network) {
+            site.wayPoint.node.OnUpdateVisible += OnUpdateGroundStationVisible;
+          } else {
+            site.wayPoint.node.OnUpdateVisible += OnUpdateOffNetworkStationVisible;
+          }
         }
       }
       if (!all_stations_good) {
