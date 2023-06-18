@@ -35,14 +35,42 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
     }
   }
 
+  private string TxReport(Routing.OrientedLink link) {
+    double this_link_tx_power =
+        link.tx_antenna.PowerDrawLinear * 1e-3 *
+        link.TxPowerUsageFromDataRate(connection_.data_rate);
+    double used_tx_power =
+        link.tx_antenna.PowerDrawLinear * 1e-3 *
+        telecom_.network.routing_.usage.TxPowerUsage(link.tx_antenna);
+    double available_tx_power = link.tx_antenna.PowerDrawLinear * 1e-3;
+    return $@"Tx {link.tx_antenna.Name} {
+               this_link_tx_power:N0} W / {
+               used_tx_power:N0} W / {
+               available_tx_power:N0} W";
+  }
+
+  private string RxReport(Routing.OrientedLink link) {
+    double this_link_spectrum =
+        link.SpectrumUsageFromDataRate(connection_.data_rate);
+    double used_spectrum =
+        telecom_.network.routing_.usage.SpectrumUsage(link.rx_antenna);
+    double available_spectrum = link.band.ChannelWidth;
+    return $@"Rx {link.rx_antenna.Name} {
+               RATools.PrettyPrint(this_link_spectrum)}Hz / {
+               RATools.PrettyPrint(used_spectrum)}Hz / {
+               RATools.PrettyPrint(available_spectrum)}Hz";
+  }
+
   private void ShowChannel(Routing.Channel channel) {
     if (channel == null) {
         return;
       }
     UnityEngine.GUILayout.Label(channel.links[0].tx.displayName);
     foreach (var link in channel.links) {
+    UnityEngine.GUILayout.Label(TxReport(link));
       UnityEngine.GUILayout.Label(
           $"↓ {link.length / 299792458 * 1000:N0} ms");
+    UnityEngine.GUILayout.Label(RxReport(link));
       UnityEngine.GUILayout.Label(link.rx.displayName);
     }
   }

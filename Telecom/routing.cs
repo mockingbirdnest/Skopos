@@ -37,7 +37,7 @@ public class Routing {
 
   public class NetworkUsage {
     public static NetworkUsage None = new NetworkUsage();
-    // Normalized on [0, 1]; 
+    // Normalized on [0, 1];
     public virtual double TxPowerUsage(RealAntennaDigital tx) { return 0; }
     // In Hz.
     public virtual double SpectrumUsage(RealAntennaDigital trx) { return 0; }
