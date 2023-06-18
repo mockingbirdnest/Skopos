@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using CommNet.Network;
 using RealAntennas;
+using UnityEngine;
 
 namespace σκοπός {
 
@@ -37,7 +38,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
   }
 
   private string TxReport(Routing.OrientedLink link, bool available,
-                          bool exclusive) {
+                          bool exclusive, out GUIStyle style) {
+    style = UnityEngine.GUI.skin.label;
     double this_link_tx_power =
         link.tx_antenna.PowerDrawLinear * 1e-3 *
         link.TxPowerUsageFromDataRate(connection_.data_rate);
@@ -54,6 +56,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
       } else {
         double remaining_tx_power = total_tx_power - used_tx_power;
         if (this_link_tx_power > remaining_tx_power) {
+          style = principia.ksp_plugin_adapter.Style.Warning(
+              UnityEngine.GUI.skin.label);
           return $@"Tx {link.tx_antenna.Name} Power-limited: would need {
                      this_link_tx_power:N0} W / {
                      remaining_tx_power:N0} W / {
@@ -72,6 +76,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                    total_tx_power:N0} W";
       } else {
         if (this_link_tx_power > total_tx_power) {
+          style = principia.ksp_plugin_adapter.Style.Warning(
+              UnityEngine.GUI.skin.label);
           return $@"Tx {link.tx_antenna.Name} Power-limited: would need {
                      this_link_tx_power:N0} W / {
                      total_tx_power:N0} W";
@@ -85,7 +91,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
   }
 
   private string RxReport(Routing.OrientedLink link, bool available,
-                          bool exclusive) {
+                          bool exclusive, out GUIStyle style) {
+    style = UnityEngine.GUI.skin.label;
     double this_link_spectrum =
         link.SpectrumUsageFromDataRate(connection_.data_rate);
     double total_spectrum = link.band.ChannelWidth;
@@ -100,6 +107,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
       } else {
         double remaining_spectrum = total_spectrum - used_spectrum;
         if (this_link_spectrum > remaining_spectrum) {
+          style = principia.ksp_plugin_adapter.Style.Warning(
+              UnityEngine.GUI.skin.label);
           return $@"Rx {link.rx_antenna.Name} Bandwidth-limited: would need {
                    RATools.PrettyPrint(this_link_spectrum)}Hz / {
                    RATools.PrettyPrint(used_spectrum)}Hz / {
@@ -118,6 +127,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                    RATools.PrettyPrint(total_spectrum)}Hz";
       } else {
         if (this_link_spectrum > total_spectrum) {
+          style = principia.ksp_plugin_adapter.Style.Warning(
+              UnityEngine.GUI.skin.label);
           return $@"Rx {link.rx_antenna.Name} Bandwidth-limited: would need {
                    RATools.PrettyPrint(this_link_spectrum)}Hz / {
                    RATools.PrettyPrint(total_spectrum)}Hz";
@@ -138,10 +149,14 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
       }
     UnityEngine.GUILayout.Label(channel.links[0].tx.displayName);
     foreach (var link in channel.links) {
-    UnityEngine.GUILayout.Label(TxReport(link, available, exclusive));
+    UnityEngine.GUILayout.Label(
+        TxReport(link, available, exclusive, out var style),
+        style);
       UnityEngine.GUILayout.Label(
           $"↓ {link.length / 299792458 * 1000:N0} ms");
-    UnityEngine.GUILayout.Label(RxReport(link, available, exclusive));
+      UnityEngine.GUILayout.Label(RxReport(link, available, exclusive,
+                                           out style),
+                                  style);
       UnityEngine.GUILayout.Label(link.rx.displayName);
     }
   }
