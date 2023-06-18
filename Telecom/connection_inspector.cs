@@ -21,56 +21,127 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
 
   protected override string Title => "Connection inspector";
 
-  private void ShowCircuit(Routing.Circuit circuit) {
+  private void ShowCircuit(Routing.Circuit circuit, bool available,
+                           bool exclusive) {
     if (circuit == null) {
       return;
     }
     using (new UnityEngine.GUILayout.HorizontalScope()) {
       using (new UnityEngine.GUILayout.VerticalScope()) {
-        ShowChannel(circuit.forward);
+        ShowChannel(circuit.forward, available, exclusive);
       }
       using (new UnityEngine.GUILayout.VerticalScope()) {
-        ShowChannel(circuit.backward);
+        ShowChannel(circuit.backward, available, exclusive);
       }
     }
   }
 
-  private string TxReport(Routing.OrientedLink link) {
+  private string TxReport(Routing.OrientedLink link, bool available,
+                          bool exclusive) {
     double this_link_tx_power =
         link.tx_antenna.PowerDrawLinear * 1e-3 *
         link.TxPowerUsageFromDataRate(connection_.data_rate);
-    double used_tx_power =
-        link.tx_antenna.PowerDrawLinear * 1e-3 *
-        telecom_.network.routing_.usage.TxPowerUsage(link.tx_antenna);
-    double available_tx_power = link.tx_antenna.PowerDrawLinear * 1e-3;
-    return $@"Tx {link.tx_antenna.Name} {
-               this_link_tx_power:N0} W / {
-               used_tx_power:N0} W / {
-               available_tx_power:N0} W";
+    double total_tx_power = link.tx_antenna.PowerDrawLinear * 1e-3;
+    if (exclusive && telecom_.network.routing_.IsLimited(link.tx)) {
+      double used_tx_power =
+          link.tx_antenna.PowerDrawLinear * 1e-3 *
+          telecom_.network.routing_.usage.TxPowerUsage(link.tx_antenna);
+      if (available) {
+        return $@"Tx {link.tx_antenna.Name} {
+                   this_link_tx_power:N0} W / {
+                   used_tx_power:N0} W / {
+                   total_tx_power:N0} W";
+      } else {
+        double remaining_tx_power = total_tx_power - used_tx_power;
+        if (this_link_tx_power > remaining_tx_power) {
+          return $@"Tx {link.tx_antenna.Name} Power-limited: would need {
+                     this_link_tx_power:N0} W / {
+                     remaining_tx_power:N0} W / {
+                     total_tx_power:N0} W";
+        } else {
+          return $@"Tx {link.tx_antenna.Name} would need {
+                     this_link_tx_power:N0} W / {
+                     remaining_tx_power:N0} W / {
+                     total_tx_power:N0} W";
+        }
+      }
+    } else {
+      if (available) {
+        return $@"Tx {link.tx_antenna.Name} {
+                   this_link_tx_power:N0} W / {
+                   total_tx_power:N0} W";
+      } else {
+        if (this_link_tx_power > total_tx_power) {
+          return $@"Tx {link.tx_antenna.Name} Power-limited: would need {
+                     this_link_tx_power:N0} W / {
+                     total_tx_power:N0} W";
+        } else {
+          return $@"Tx {link.tx_antenna.Name} would need {
+                     this_link_tx_power:N0} W / {
+                     total_tx_power:N0} W";
+        }
+      }
+    }
   }
 
-  private string RxReport(Routing.OrientedLink link) {
+  private string RxReport(Routing.OrientedLink link, bool available,
+                          bool exclusive) {
     double this_link_spectrum =
         link.SpectrumUsageFromDataRate(connection_.data_rate);
-    double used_spectrum =
-        telecom_.network.routing_.usage.SpectrumUsage(link.rx_antenna);
-    double available_spectrum = link.band.ChannelWidth;
-    return $@"Rx {link.rx_antenna.Name} {
-               RATools.PrettyPrint(this_link_spectrum)}Hz / {
-               RATools.PrettyPrint(used_spectrum)}Hz / {
-               RATools.PrettyPrint(available_spectrum)}Hz";
+    double total_spectrum = link.band.ChannelWidth;
+    if (exclusive && telecom_.network.routing_.IsLimited(link.rx)) {
+      double used_spectrum =
+          telecom_.network.routing_.usage.SpectrumUsage(link.rx_antenna);
+      if (available) {
+        return $@"Rx {link.rx_antenna.Name} {
+                   RATools.PrettyPrint(this_link_spectrum)}Hz / {
+                   RATools.PrettyPrint(used_spectrum)}Hz / {
+                   RATools.PrettyPrint(total_spectrum)}Hz";
+      } else {
+        double remaining_spectrum = total_spectrum - used_spectrum;
+        if (this_link_spectrum > remaining_spectrum) {
+          return $@"Rx {link.rx_antenna.Name} Bandwidth-limited: would need {
+                   RATools.PrettyPrint(this_link_spectrum)}Hz / {
+                   RATools.PrettyPrint(used_spectrum)}Hz / {
+                   RATools.PrettyPrint(total_spectrum)}Hz";
+        } else {
+          return $@"Rx {link.rx_antenna.Name} would need {
+                    RATools.PrettyPrint(this_link_spectrum)}Hz / {
+                    RATools.PrettyPrint(used_spectrum)}Hz / {
+                    RATools.PrettyPrint(total_spectrum)}Hz";
+        }
+      }
+    } else {
+      if (available) {
+        return $@"Rx {link.rx_antenna.Name} {
+                   RATools.PrettyPrint(this_link_spectrum)}Hz / {
+                   RATools.PrettyPrint(total_spectrum)}Hz";
+      } else {
+        if (this_link_spectrum > total_spectrum) {
+          return $@"Rx {link.rx_antenna.Name} Bandwidth-limited: would need {
+                   RATools.PrettyPrint(this_link_spectrum)}Hz / {
+                   RATools.PrettyPrint(total_spectrum)}Hz";
+        } else {
+          return $@"Rx {link.rx_antenna.Name} would need {
+                   RATools.PrettyPrint(this_link_spectrum)}Hz / {
+                   RATools.PrettyPrint(total_spectrum)}Hz";
+        }
+      }
+    }
   }
 
-  private void ShowChannel(Routing.Channel channel) {
+  private void ShowChannel(Routing.Channel channel,
+                           bool available,
+                           bool exclusive) {
     if (channel == null) {
         return;
       }
     UnityEngine.GUILayout.Label(channel.links[0].tx.displayName);
     foreach (var link in channel.links) {
-    UnityEngine.GUILayout.Label(TxReport(link));
+    UnityEngine.GUILayout.Label(TxReport(link, available, exclusive));
       UnityEngine.GUILayout.Label(
           $"↓ {link.length / 299792458 * 1000:N0} ms");
-    UnityEngine.GUILayout.Label(RxReport(link));
+    UnityEngine.GUILayout.Label(RxReport(link, available, exclusive));
       UnityEngine.GUILayout.Label(link.rx.displayName);
     }
   }
@@ -118,7 +189,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
         }
         if (receiver_open_?[i] != false) {
           if (available) {
-            ShowChannel(services.channel);
+            ShowChannel(services.channel, available,
+                        point_to_multipoint.exclusive);
           } else {
             Routing.Channel[] channels;
             bool capacity_limited = false;
@@ -133,7 +205,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                 capacity_limited = true;
                 UnityEngine.GUILayout.Label(
                       $"→ Limited by capacity: available in isolation:");
-                ShowChannel(channels[0]);
+                ShowChannel(channels[0], available,
+                            point_to_multipoint.exclusive);
               }
             }
             if (!capacity_limited) {
@@ -147,7 +220,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
               if (purely_latency_limited) {
                 UnityEngine.GUILayout.Label(
                     $"→ Latency-limited: available at {channels[0].latency * 1000:N0} ms:");
-                  ShowChannel(channels[0]);
+                  ShowChannel(channels[0], available,
+                              point_to_multipoint.exclusive);
               }
               telecom_.network.routing_.FindChannelsInIsolation(
                   tx.Comm,
@@ -162,7 +236,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                       select link.max_data_rate).Min());
                 UnityEngine.GUILayout.Label(
                     $"→ Limited by data rate: available at {max_data_rate}");
-                ShowChannel(channels[0]);
+                ShowChannel(channels[0], available,
+                            point_to_multipoint.exclusive);
               }
               if (!purely_rate_limited && !purely_latency_limited) {
                 telecom_.network.routing_.FindChannelsInIsolation(
@@ -178,7 +253,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                   UnityEngine.GUILayout.Label(
                       "→ Limited by both latency and data rate: available at " +
                       $"{max_data_rate}, {channels[0].latency * 1000:N0} ms");
-                  ShowChannel(channels[0]);
+                  ShowChannel(channels[0], available,
+                              point_to_multipoint.exclusive);
                 }
               }
             }
@@ -204,7 +280,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
       UnityEngine.GUILayout.Label(
           $@"Duplex between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}");
       if (available) {
-        ShowCircuit(duplex.circuit);
+        ShowCircuit(duplex.circuit, available, duplex.exclusive);
       } else {
         Routing.Circuit circuit;
         bool capacity_limited = false;
@@ -218,7 +294,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
             capacity_limited = true;
             UnityEngine.GUILayout.Label(
                   $"→ Limited by capacity: available in isolation:");
-            ShowCircuit(circuit);
+            ShowCircuit(circuit, available, duplex.exclusive);
           } else {
             telecom_.network.routing_.FindChannelsInIsolation(
                 trx0.Comm,
@@ -236,7 +312,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
               capacity_limited = true;
               UnityEngine.GUILayout.Label(
                     $"→ Limited by capacity: available in simplex:");
-              ShowCircuit(new Routing.Circuit(forward[0], backward[0]));
+              ShowCircuit(new Routing.Circuit(forward[0], backward[0]),
+                          available, duplex.exclusive);
             }
           }
         }
@@ -251,7 +328,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
             UnityEngine.GUILayout.Label(
                 $@"→ Latency-limited: available at {
                     circuit.round_trip_latency * 1000:N0} ms");
-            ShowCircuit(circuit);
+            ShowCircuit(circuit, available, duplex.exclusive);
           }
           circuit = telecom_.network.routing_.FindCircuitInIsolation(
               trx0.Comm,
@@ -268,7 +345,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                       select link.max_data_rate).Min()));
             UnityEngine.GUILayout.Label(
                 $"→ Limited by data rate: available at {max_data_rate}");
-            ShowCircuit(circuit);
+            ShowCircuit(circuit, available, duplex.exclusive);
           }
           if (!purely_rate_limited && !purely_latency_limited) {
             circuit = telecom_.network.routing_.FindCircuitInIsolation(
@@ -286,7 +363,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
               UnityEngine.GUILayout.Label(
                   "→ Limited by both latency and data rate: available at " +
                   $"{max_data_rate}, {circuit.round_trip_latency * 1000:N0} ms");
-              ShowCircuit(circuit);
+              ShowCircuit(circuit, available, duplex.exclusive);
             }
           }
         }

@@ -61,6 +61,10 @@ public class Routing {
   }
   public NetworkUsage usage => current_network_usage_;
 
+  public bool IsLimited(RACommNode node) {
+    return !multiple_tracking_.Contains(node);
+  }
+
   public Circuit FindCircuitInIsolation(
       RACommNode source,
       RACommNode destination,
