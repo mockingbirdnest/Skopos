@@ -26,7 +26,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
       return;
     }
     using (new UnityEngine.GUILayout.HorizontalScope()) {
-      using (new UnityEngine.GUILayout.VerticalScope()) { 
+      using (new UnityEngine.GUILayout.VerticalScope()) {
         ShowChannel(circuit.forward);
       }
       using (new UnityEngine.GUILayout.VerticalScope()) {
