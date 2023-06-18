@@ -251,7 +251,7 @@ namespace σκοπός {
       }
       UpdateConnections();
       foreach (RealAntennaDigital antenna in routing_.usage.Transmitters()) {
-        if (antenna?.Parent?.vessel is Vessel vessel) {
+        if ((antenna?.ParentNode as RACommNode).ParentVessel is Vessel vessel) {
           Kerbalism.ConsumeResource(
               vessel,
               "ElectricCharge",
