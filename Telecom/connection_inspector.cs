@@ -111,12 +111,12 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
               UnityEngine.GUI.skin.label);
           return $@"Rx {link.rx_antenna.Name} Bandwidth-limited: would need {
                    RATools.PrettyPrint(this_link_spectrum)}Hz / {
-                   RATools.PrettyPrint(used_spectrum)}Hz / {
+                   RATools.PrettyPrint(remaining_spectrum)}Hz / {
                    RATools.PrettyPrint(total_spectrum)}Hz";
         } else {
           return $@"Rx {link.rx_antenna.Name} would need {
                     RATools.PrettyPrint(this_link_spectrum)}Hz / {
-                    RATools.PrettyPrint(used_spectrum)}Hz / {
+                    RATools.PrettyPrint(remaining_spectrum)}Hz / {
                     RATools.PrettyPrint(total_spectrum)}Hz";
         }
       }
