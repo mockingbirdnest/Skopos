@@ -131,7 +131,9 @@ public class Routing {
                                 from link in channel.links
                                 group link by link.tx_antenna;
       foreach (var links in links_by_tx_antenna) {
-        current_network_usage_.UseLinks(links, data_rate);
+        current_network_usage_.UseLinks(
+            links.Distinct(new OrientedLink.RxAntennaComparer()),
+            data_rate);
       }
     }
     return availability;
@@ -379,6 +381,16 @@ public class Routing {
   }
 
   public class OrientedLink {
+    public class RxAntennaComparer : IEqualityComparer<OrientedLink> {
+        public bool Equals(OrientedLink x, OrientedLink y) {
+            return x.rx_antenna == y.rx_antenna;
+        }
+
+        public int GetHashCode(OrientedLink obj) {
+            return obj.rx_antenna.GetHashCode();
+        }
+    }
+
     public static OrientedLink Get(
         Routing routing,
         RACommNode from,
