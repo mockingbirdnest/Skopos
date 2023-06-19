@@ -50,41 +50,41 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
           telecom_.network.routing_.usage.TxPowerUsage(link.tx_antenna);
       if (available) {
         return $@"Tx {link.tx_antenna.Name} {
-                   this_link_tx_power:N0} W / {
-                   used_tx_power:N0} W / {
-                   total_tx_power:N0} W";
+                   this_link_tx_power:N1} W / {
+                   used_tx_power:N1} W / {
+                   total_tx_power:N1} W";
       } else {
         double remaining_tx_power = total_tx_power - used_tx_power;
         if (this_link_tx_power > remaining_tx_power) {
           style = principia.ksp_plugin_adapter.Style.Warning(
               UnityEngine.GUI.skin.label);
           return $@"Tx {link.tx_antenna.Name} Power-limited: would need {
-                     this_link_tx_power:N0} W / {
-                     remaining_tx_power:N0} W / {
-                     total_tx_power:N0} W";
+                     this_link_tx_power:N1} W / {
+                     remaining_tx_power:N1} W / {
+                     total_tx_power:N1} W";
         } else {
           return $@"Tx {link.tx_antenna.Name} would need {
-                     this_link_tx_power:N0} W / {
-                     remaining_tx_power:N0} W / {
-                     total_tx_power:N0} W";
+                     this_link_tx_power:N1} W / {
+                     remaining_tx_power:N1} W / {
+                     total_tx_power:N1} W";
         }
       }
     } else {
       if (available) {
         return $@"Tx {link.tx_antenna.Name} {
-                   this_link_tx_power:N0} W / {
-                   total_tx_power:N0} W";
+                   this_link_tx_power:N1} W / {
+                   total_tx_power:N1} W";
       } else {
         if (this_link_tx_power > total_tx_power) {
           style = principia.ksp_plugin_adapter.Style.Warning(
               UnityEngine.GUI.skin.label);
           return $@"Tx {link.tx_antenna.Name} Power-limited: would need {
-                     this_link_tx_power:N0} W / {
-                     total_tx_power:N0} W";
+                     this_link_tx_power:N1} W / {
+                     total_tx_power:N1} W";
         } else {
           return $@"Tx {link.tx_antenna.Name} would need {
-                     this_link_tx_power:N0} W / {
-                     total_tx_power:N0} W";
+                     this_link_tx_power:N1} W / {
+                     total_tx_power:N1} W";
         }
       }
     }
