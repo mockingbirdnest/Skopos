@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CommNet.Network;
 using RealAntennas;
 using RealAntennas.Network;
 
@@ -36,13 +37,70 @@ public class Routing {
     }
 
   public class NetworkUsage {
+    public class PowerBreakdown {
+      public struct SingleUsage {
+        public Connection connection;
+        public Channel channel;
+        public OrientedLink link;
+        public double power ;
+      }
+
+      public double power { get; private set; } = 0;
+
+      public void AddUsages(SingleUsage[] broadcast) {
+        power += (from usage in broadcast select usage.power).Max();
+        usages.Add(broadcast);
+      }
+
+      private List<SingleUsage[]> usages = new List<SingleUsage[]>();
+    }
+
+    public class SpectrumBreakdown {
+      public struct SingleUsage {
+        public enum Kind { Transmit, Receive }
+        public Connection connection;
+        public Channel channel;
+        public OrientedLink link;
+        public Kind kind;
+        public double spectrum ;
+      }
+
+      public double spectrum { get; private set; } = 0;
+
+      public void AddUsages(SingleUsage[] usage) {
+        spectrum += usage[0].spectrum;
+        usages.Add(usage);
+      }
+
+      private List<SingleUsage[]> usages = new List<SingleUsage[]>();
+    }
+
     public static NetworkUsage None = new NetworkUsage();
+
     // Normalized on [0, 1];
-    public virtual double TxPowerUsage(RealAntennaDigital tx) { return 0; }
+    public double TxPowerUsage(RealAntennaDigital tx) {
+      return SourcedTxPowerUsage(tx).power;
+    }
+
     // In Hz.
-    public virtual double SpectrumUsage(RealAntennaDigital trx) { return 0; }
+    public double SpectrumUsage(RealAntennaDigital trx) {
+      return SourcedSpectrumUsage(trx).spectrum;
+    }
+
+    public virtual PowerBreakdown SourcedTxPowerUsage(
+        RealAntennaDigital tx) {
+      return NoPowerUsage;
+     }
+
+    public virtual SpectrumBreakdown SourcedSpectrumUsage(
+        RealAntennaDigital tx) {
+      return NoSpectrumUsage;
+    }
     public virtual IEnumerable<RealAntennaDigital> Transmitters() { yield break; }
     protected NetworkUsage() {}
+
+    private static PowerBreakdown NoPowerUsage = new PowerBreakdown();
+    private static SpectrumBreakdown NoSpectrumUsage = new SpectrumBreakdown();
   }
 
   public Routing() {
@@ -285,9 +343,11 @@ public class Routing {
         : this(routing) {
       if (other is RoutingNetworkUsage nontrival) {
         tx_power_usage_ =
-            new Dictionary<RealAntenna, double>(nontrival.tx_power_usage_);
+            new Dictionary<RealAntenna, PowerBreakdown>(
+                nontrival.tx_power_usage_);
         spectrum_usage_ =
-            new Dictionary<RealAntenna, double>(nontrival.spectrum_usage_);
+            new Dictionary<RealAntenna, SpectrumBreakdown>(
+                nontrival.spectrum_usage_);
       }
     }
 
@@ -296,13 +356,14 @@ public class Routing {
       spectrum_usage_.Clear();
     }
 
-    public override double TxPowerUsage(RealAntennaDigital tx) {
-      tx_power_usage_.TryGetValue(tx, out double usage);
+    public override PowerBreakdown SourcedTxPowerUsage(RealAntennaDigital tx) {
+      tx_power_usage_.TryGetValue(tx, out PowerBreakdown usage);
       return usage;
     }
 
-    public override double SpectrumUsage(RealAntennaDigital rx) {
-      spectrum_usage_.TryGetValue(rx, out double usage);
+    public override SpectrumBreakdown SourcedSpectrumUsage(
+        RealAntennaDigital rx) {
+      spectrum_usage_.TryGetValue(rx, out SpectrumBreakdown usage);
       return usage;
     }
 
@@ -330,11 +391,16 @@ public class Routing {
       }
       RealAntennaDigital tx_antenna = links.First().tx_antenna;
       if (!tx_power_usage_.ContainsKey(tx_antenna)) {
-        tx_power_usage_.Add(tx_antenna, 0);
+        tx_power_usage_.Add(tx_antenna, new PowerBreakdown());
       }
-      double usage = (from link in links
-                      select link.TxPowerUsageFromDataRate(data_rate)).Max();
-      tx_power_usage_[tx_antenna] += usage;
+      var usages = (from link in links
+                    select new PowerBreakdown.SingleUsage {
+                        connection = null,  // TODO(egg): Pass that context.
+                        channel = null,
+                        link = link,
+                        power = link.TxPowerUsageFromDataRate(data_rate),
+                    }).ToArray();
+      tx_power_usage_[tx_antenna].AddUsages(usages);
     }
 
     private void UseSpectrum(IEnumerable<OrientedLink> links, double data_rate) {
@@ -344,18 +410,34 @@ public class Routing {
           continue;
         }
         if (!spectrum_usage_.ContainsKey(link.rx_antenna)) {
-          spectrum_usage_.Add(link.rx_antenna, 0);
+          spectrum_usage_.Add(link.rx_antenna, new SpectrumBreakdown());
         }
-        spectrum_usage_[link.rx_antenna] += usage;
+        spectrum_usage_[link.rx_antenna].AddUsages(
+            new[] {
+                new SpectrumBreakdown.SingleUsage{
+                    connection = null,  // TODO(egg): Pass that context.
+                    channel = null,
+                    link = link,
+                    kind = SpectrumBreakdown.SingleUsage.Kind.Receive,
+                    spectrum = usage,
+            }});
       }
       RealAntennaDigital tx_antenna = links.First().tx_antenna;
       if (routing_.multiple_tracking_.Contains(links.First().tx)) {
         return;
       }
       if (!spectrum_usage_.ContainsKey(tx_antenna)) {
-        spectrum_usage_.Add(tx_antenna, 0);
+        spectrum_usage_.Add(tx_antenna, new SpectrumBreakdown());
       }
-      spectrum_usage_[tx_antenna] += usage;
+      spectrum_usage_[tx_antenna].AddUsages(
+          (from link in links select
+            new SpectrumBreakdown.SingleUsage{
+                connection = null,  // TODO(egg): Pass that context.
+                channel = null,
+                link = link,
+                kind = SpectrumBreakdown.SingleUsage.Kind.Transmit,
+                spectrum = usage,
+          }).ToArray());
     }
 
     private void EnsureSameTxAntennaAndTL(IEnumerable<OrientedLink> links) {
@@ -373,10 +455,10 @@ public class Routing {
 #endif
     }
 
-    private readonly Dictionary<RealAntenna, double> tx_power_usage_ =
-        new Dictionary<RealAntenna, double>();
-    private readonly Dictionary<RealAntenna, double> spectrum_usage_ =
-        new Dictionary<RealAntenna, double>();
+    private readonly Dictionary<RealAntenna, PowerBreakdown> tx_power_usage_ =
+        new Dictionary<RealAntenna, PowerBreakdown>();
+    private readonly Dictionary<RealAntenna, SpectrumBreakdown> spectrum_usage_ =
+        new Dictionary<RealAntenna, SpectrumBreakdown>();
     private Routing routing_;
   }
 
