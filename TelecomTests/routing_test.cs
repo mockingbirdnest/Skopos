@@ -247,6 +247,7 @@ public class RoutingTest {
     Assert.AreEqual(
         1e6,
         routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
+    // 1 MHz for reception, 1 MHz for transmission.
     Assert.AreEqual(
         2e6,
         routing_.usage.SpectrumUsage(w.FirstDigitalAntenna()));

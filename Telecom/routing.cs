@@ -440,20 +440,22 @@ public class Routing {
 
     private void UseSpectrum(IEnumerable<SourcedLink> links, double data_rate) {
       double usage = links.First().link.SpectrumUsageFromDataRate(data_rate);
-      foreach (SourcedLink sourced in links) {
-        if (routing_.multiple_tracking_.Contains(sourced.link.rx)) {
+      foreach (var sourced in links.GroupBy(l => l.link.rx_antenna)) {
+        RACommNode rx = sourced.First().link.rx;
+        RealAntennaDigital rx_antenna = sourced.First().link.rx_antenna;
+        if (routing_.multiple_tracking_.Contains(rx)) {
           continue;
         }
-        if (!spectrum_usage_.ContainsKey(sourced.link.rx_antenna)) {
-          spectrum_usage_.Add(sourced.link.rx_antenna, new SpectrumBreakdown());
+        if (!spectrum_usage_.ContainsKey(rx_antenna)) {
+          spectrum_usage_.Add(rx_antenna, new SpectrumBreakdown());
         }
-        spectrum_usage_[sourced.link.rx_antenna].AddUsages(
-            new[] {
+        spectrum_usage_[rx_antenna].AddUsages(
+            (from link in sourced select
                 new SpectrumBreakdown.SingleUsage{
-                    link = sourced,
+                    link = link,
                     kind = SpectrumBreakdown.SingleUsage.Kind.Receive,
                     spectrum = usage,
-            }});
+            }).ToArray());
       }
       RealAntennaDigital tx_antenna = links.First().link.tx_antenna;
       if (routing_.multiple_tracking_.Contains(links.First().link.tx)) {
