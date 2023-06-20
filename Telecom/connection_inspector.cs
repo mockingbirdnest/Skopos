@@ -43,48 +43,59 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
     double this_link_tx_power =
         link.tx_antenna.PowerDrawLinear * 1e-3 *
         link.TxPowerUsageFromDataRate(connection_.data_rate);
-    double total_tx_power = link.tx_antenna.PowerDrawLinear * 1e-3;
+    double max_tx_power = link.tx_antenna.PowerDrawLinear * 1e-3;
     if (exclusive && telecom_.network.routing_.IsLimited(link.tx)) {
-      double used_tx_power =
-          link.tx_antenna.PowerDrawLinear * 1e-3 *
-          telecom_.network.routing_.usage.TxPowerUsage(link.tx_antenna);
+      Routing.NetworkUsage.PowerBreakdown tx_power_usage =
+          telecom_.network.routing_.usage.SourcedTxPowerUsage(link.tx_antenna);
+      double used_tx_power = link.tx_antenna.PowerDrawLinear * 1e-3 *
+          tx_power_usage.power;
       if (available) {
-        return $@"Tx {link.tx_antenna.Name} {
-                   this_link_tx_power:N1} W / {
-                   used_tx_power:N1} W / {
-                   total_tx_power:N1} W";
+        return $@"Draws: {
+                   this_link_tx_power:N1} W / Total: {
+                   used_tx_power:N1} W / Max: {
+                   max_tx_power:N1} W";
       } else {
-        double remaining_tx_power = total_tx_power - used_tx_power;
-        if (this_link_tx_power > remaining_tx_power) {
-          style = principia.ksp_plugin_adapter.Style.Warning(
-              UnityEngine.GUI.skin.label);
-          return $@"Tx {link.tx_antenna.Name} Power-limited: would need {
-                     this_link_tx_power:N1} W / {
-                     remaining_tx_power:N1} W / {
-                     total_tx_power:N1} W";
+        if (connection_ is PointToMultipointConnection &&
+            (from usages in tx_power_usage.usages
+             from usage in usages
+               select usage.link.connection == connection_).Any()) {
+          return $@"Draws: {
+                     this_link_tx_power:N1} W / Total: {
+                     used_tx_power:N1} W / Max: {
+                     max_tx_power:N1} W";
         } else {
-          return $@"Tx {link.tx_antenna.Name} would need {
-                     this_link_tx_power:N1} W / {
-                     remaining_tx_power:N1} W / {
-                     total_tx_power:N1} W";
+          double remaining_power = max_tx_power - used_tx_power;
+          if (this_link_tx_power > remaining_power) {
+            style = principia.ksp_plugin_adapter.Style.Warning(
+                UnityEngine.GUI.skin.label);
+            return $@"Power-limited, would need: {
+                       this_link_tx_power:N1} W / Available: {
+                       remaining_power:N1} W / Max: {
+                       max_tx_power:N1} W";
+          } else {
+            return $@"Would draw: {
+                       this_link_tx_power:N1} W / Available: {
+                       remaining_power:N1} W / Max: {
+                       max_tx_power:N1} W";
+          }
         }
       }
     } else {
       if (available) {
-        return $@"Tx {link.tx_antenna.Name} {
-                   this_link_tx_power:N1} W / {
-                   total_tx_power:N1} W";
+        return $@"Draws: {
+                   this_link_tx_power:N1} W / Total: {
+                   max_tx_power:N1} W";
       } else {
-        if (this_link_tx_power > total_tx_power) {
+        if (this_link_tx_power > max_tx_power) {
           style = principia.ksp_plugin_adapter.Style.Warning(
               UnityEngine.GUI.skin.label);
-          return $@"Tx {link.tx_antenna.Name} Power-limited: would need {
-                     this_link_tx_power:N1} W / {
-                     total_tx_power:N1} W";
+            return $@"Power-limited, would need: {
+                       this_link_tx_power:N1} W / Max: {
+                       max_tx_power:N1} W";
         } else {
-          return $@"Tx {link.tx_antenna.Name} would need {
-                     this_link_tx_power:N1} W / {
-                     total_tx_power:N1} W";
+            return $@"Would draw: {
+                       this_link_tx_power:N1} W / Max: {
+                       max_tx_power:N1} W";
         }
       }
     }
@@ -164,7 +175,9 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
       UnityEngine.GUILayout.Label($"Tx {link.tx_antenna.Name}");
       UnityEngine.GUILayout.Label(SpectrumReport(link.tx_antenna, link,
                                                  available, exclusive,
-                                                 out var style),
+                                                 out var style));
+      UnityEngine.GUILayout.Label(TxPowerReport(link, available, exclusive,
+                                                out style),
                                   style);
       UnityEngine.GUILayout.Label(
           TxPowerReport(link, available, exclusive, out style),
