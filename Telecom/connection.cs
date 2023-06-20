@@ -51,7 +51,7 @@ namespace σκοπός {
         circuit = routing.FindAndUseAvailableCircuit(
             network.GetStation(trx_names[0]).Comm,
             network.GetStation(trx_names[1]).Comm,
-            latency_limit, data_rate);
+            latency_limit, data_rate, this);
       } else {
         circuit = routing.FindCircuitInIsolation(
             network.GetStation(trx_names[0]).Comm,
@@ -97,7 +97,7 @@ namespace σκοπός {
     public bool exclusive { get; }
 
     public string[] trx_names { get; }
-    
+
     public Routing.Circuit circuit { get; private set; }
     public Service basic_service;
     public SortedDictionary<double, Service> improved_service_by_latency {
@@ -129,7 +129,7 @@ namespace σκοπός {
       Routing.Channel[] channels;
       if (exclusive) {
         routing.FindAndUseAvailableChannels(
-            tx, rx, latency_limit, data_rate, out channels);
+            tx, rx, latency_limit, data_rate, out channels, this);
       } else {
         routing.FindChannelsInIsolation(
             tx, rx, latency_limit, data_rate, out channels);
@@ -189,7 +189,7 @@ namespace σκοπός {
       public ChannelService(int window_size) {
         basic = new Service(window_size);
       }
-      
+
       public Routing.Channel channel;
       public Service basic;
       public SortedDictionary<double, Service> improved_by_latency =

@@ -90,7 +90,8 @@ public class RoutingTest {
     Assert.IsNull(routing_.FindAndUseAvailableCircuit(
         v, w,
         round_trip_latency_limit: double.PositiveInfinity,
-        one_way_data_rate: 20e6));
+        one_way_data_rate: 20e6,
+        connection: null));
 
     // But we could have simplex at 20 Mbps.
     Assert.AreEqual(
@@ -114,7 +115,8 @@ public class RoutingTest {
     Routing.Circuit circuit = routing_.FindAndUseAvailableCircuit(
         v, w,
         round_trip_latency_limit: double.PositiveInfinity,
-        one_way_data_rate: 10e6);
+        one_way_data_rate: 10e6,
+        connection: null);
     Assert.IsNotNull(circuit);
     CollectionAssert.AreEqual(new[]{x, y, w},
                               circuit.forward.ReceivingStations());
@@ -171,7 +173,8 @@ public class RoutingTest {
                                 destinations: new[] {x, y},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 500e3,
-                                out Routing.Channel[] channels));
+                                out Routing.Channel[] channels,
+                                connection: null));
     CollectionAssert.AllItemsAreNotNull(channels);
     // Even though 500 kbps is only 5% of the v-x link, we have used up half the
     // power of the antenna, because that is needed to transmit 500 kbps to y.
@@ -182,7 +185,8 @@ public class RoutingTest {
                                 destinations: new[] {x, y},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 8e6,
-                                out channels));
+                                out channels,
+                                connection: null));
     // Another 500 kbps to x only costs us 5% of our power.
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Available,
@@ -190,7 +194,8 @@ public class RoutingTest {
                                 destinations: new[] {x},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 500e3,
-                                out channels));
+                                out channels,
+                                connection: null));
     CollectionAssert.AllItemsAreNotNull(channels);
     Assert.AreEqual(0.55, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
     // We can throw another 4.5 Mbps at it before we run out of power.
@@ -200,7 +205,8 @@ public class RoutingTest {
                                 destinations: new[] {x, y},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 4.5e6,
-                                out channels));
+                                out channels,
+                                connection: null));
     Assert.IsNotNull(channels[0]);
     Assert.IsNull(channels[1]);
     Assert.AreEqual(1, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
@@ -283,7 +289,8 @@ public class RoutingTest {
         source: v,
         destination: w,
         round_trip_latency_limit: double.PositiveInfinity,
-        one_way_data_rate: 5e6);
+        one_way_data_rate: 5e6,
+        connection: null);
     Assert.IsNotNull(low_latency_circuit);
     CollectionAssert.AreEqual(
         new[]{x, y, w},
@@ -295,7 +302,8 @@ public class RoutingTest {
         source: v,
         destination: w,
         round_trip_latency_limit: double.PositiveInfinity,
-        one_way_data_rate: 5e6);
+        one_way_data_rate: 5e6,
+        connection: null);
     Assert.IsNotNull(high_latency_circuit);
     CollectionAssert.AreEqual(
         new[]{z, w},
@@ -335,14 +343,16 @@ public class RoutingTest {
         source: w,
         destination: v,
         round_trip_latency_limit: double.PositiveInfinity,
-        one_way_data_rate: 1e9));
+        one_way_data_rate: 1e9,
+        connection: null));
     Assert.AreEqual(0.25, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
     Assert.AreEqual(2e9, routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
     Assert.IsNotNull(routing_.FindAndUseAvailableCircuit(
         source: x,
         destination: v,
         round_trip_latency_limit: double.PositiveInfinity,
-        one_way_data_rate: 1e9));
+        one_way_data_rate: 1e9,
+        connection: null));
     Assert.AreEqual(0.5, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
     Assert.AreEqual(4e9, routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
     // Even though we still have half the power available, we are out of
@@ -351,7 +361,8 @@ public class RoutingTest {
         source: y,
         destination: v,
         round_trip_latency_limit: double.PositiveInfinity,
-        one_way_data_rate: 1e9));
+        one_way_data_rate: 1e9,
+        connection: null));
   }
 
   RACommNode MakeNode(string name, double x, double y) {

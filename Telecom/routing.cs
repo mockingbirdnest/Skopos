@@ -24,6 +24,19 @@ public class Routing {
     public double latency;
   }
 
+  public struct SourcedLink {
+    public SourcedLink(Connection connection,
+                       Channel channel,
+                       OrientedLink link) {
+      this.connection = connection;
+      this.channel = channel;
+      this.link = link;
+    }
+    public readonly Connection connection;
+    public readonly Channel channel;
+    public readonly OrientedLink link;
+  }
+
   public class Circuit {
     public readonly Channel forward;
     public readonly Channel backward;
@@ -39,9 +52,7 @@ public class Routing {
   public class NetworkUsage {
     public class PowerBreakdown {
       public struct SingleUsage {
-        public Connection connection;
-        public Channel channel;
-        public OrientedLink link;
+        public SourcedLink link;
         public double power ;
       }
 
@@ -58,9 +69,7 @@ public class Routing {
     public class SpectrumBreakdown {
       public struct SingleUsage {
         public enum Kind { Transmit, Receive }
-        public Connection connection;
-        public Channel channel;
-        public OrientedLink link;
+        public SourcedLink link;
         public Kind kind;
         public double spectrum ;
       }
@@ -139,7 +148,8 @@ public class Routing {
       RACommNode source,
       RACommNode destination,
       double round_trip_latency_limit,
-      double one_way_data_rate) {
+      double one_way_data_rate,
+      Connection connection) {
     Circuit circuit = FindCircuit(
         source,
         destination,
@@ -148,10 +158,14 @@ public class Routing {
         current_network_usage_);
     if (circuit != null) {
       foreach (OrientedLink link in circuit.forward.links) {
-        current_network_usage_.UseLinks(new[] {link}, one_way_data_rate);
+        current_network_usage_.UseLinks(
+            new[] {new SourcedLink(connection, circuit.forward, link)},
+            one_way_data_rate);
       }
       foreach (OrientedLink link in circuit.backward.links) {
-        current_network_usage_.UseLinks(new[] {link}, one_way_data_rate);
+        current_network_usage_.UseLinks(
+            new[] {new SourcedLink(connection, circuit.backward, link)},
+            one_way_data_rate);
       }
     }
     return circuit;
@@ -176,7 +190,8 @@ public class Routing {
       IList<RACommNode> destinations,
       double latency_limit,
       double data_rate,
-      out Channel[] channels) {
+      out Channel[] channels,
+      Connection connection) {
     PointToMultipointAvailability availability = FindChannels(
         source,
         destinations,
@@ -185,9 +200,10 @@ public class Routing {
         current_network_usage_,
         out channels);
     if (availability != Unavailable) {
-      var links_by_tx_antenna = from channel in channels where channel != null
-                                from link in channel.links
-                                group link by link.tx_antenna;
+      var links_by_tx_antenna =
+          from channel in channels where channel != null
+          from link in channel.links
+          group new SourcedLink(connection, channel, link) by link.tx_antenna;
       foreach (var links in links_by_tx_antenna) {
         current_network_usage_.UseLinks(links, data_rate);
       }
@@ -210,7 +226,8 @@ public class Routing {
     }
     var usage_with_forward_channel = new RoutingNetworkUsage(this, usage);
     foreach (var link in forward[0].links) {
-      usage_with_forward_channel.UseLinks(new[]{link}, one_way_data_rate);
+      usage_with_forward_channel.UseLinks(new[]{link.Unsourced()},
+                                          one_way_data_rate);
     }
     if (FindChannels(destination,
                      new[]{source},
@@ -377,51 +394,49 @@ public class Routing {
     // Uses tx power corresponding to broadcast at the given data rate along
     // all of these links (thus at the power needed for the weakest link).
     // Also uses the necessary spectrum on all antennas involved.
-    public void UseLinks(IEnumerable<OrientedLink> links, double data_rate) {
-      EnsureSameTxAntennaAndTL(links);
+    public void UseLinks(IEnumerable<SourcedLink> links,
+                         double data_rate) {
+      EnsureSameTxAntennaAndTL(from sourced in links select sourced.link);
       UseTxPower(links, data_rate);
       UseSpectrum(links, data_rate);
     }
 
-    private void UseTxPower(IEnumerable<OrientedLink> links, double data_rate) {
-      if (routing_.multiple_tracking_.Contains(links.First().tx)) {
+    private void UseTxPower(IEnumerable<SourcedLink> links,
+                            double data_rate) {
+      if (routing_.multiple_tracking_.Contains(links.First().link.tx)) {
         return;
       }
-      RealAntennaDigital tx_antenna = links.First().tx_antenna;
+      RealAntennaDigital tx_antenna = links.First().link.tx_antenna;
       if (!tx_power_usage_.ContainsKey(tx_antenna)) {
         tx_power_usage_.Add(tx_antenna, new PowerBreakdown());
       }
-      var usages = (from link in links
-                    select new PowerBreakdown.SingleUsage {
-                        connection = null,  // TODO(egg): Pass that context.
-                        channel = null,
-                        link = link,
-                        power = link.TxPowerUsageFromDataRate(data_rate),
+      var usages = (from sourced in links
+                    select new PowerBreakdown.SingleUsage{
+                        link = sourced,
+                        power = sourced.link.TxPowerUsageFromDataRate(data_rate),
                     }).ToArray();
       tx_power_usage_[tx_antenna].AddUsages(usages);
     }
 
-    private void UseSpectrum(IEnumerable<OrientedLink> links, double data_rate) {
-      double usage = links.First().SpectrumUsageFromDataRate(data_rate);
-      foreach (OrientedLink link in links) {
-        if (routing_.multiple_tracking_.Contains(link.rx)) {
+    private void UseSpectrum(IEnumerable<SourcedLink> links, double data_rate) {
+      double usage = links.First().link.SpectrumUsageFromDataRate(data_rate);
+      foreach (SourcedLink sourced in links) {
+        if (routing_.multiple_tracking_.Contains(sourced.link.rx)) {
           continue;
         }
-        if (!spectrum_usage_.ContainsKey(link.rx_antenna)) {
-          spectrum_usage_.Add(link.rx_antenna, new SpectrumBreakdown());
+        if (!spectrum_usage_.ContainsKey(sourced.link.rx_antenna)) {
+          spectrum_usage_.Add(sourced.link.rx_antenna, new SpectrumBreakdown());
         }
-        spectrum_usage_[link.rx_antenna].AddUsages(
+        spectrum_usage_[sourced.link.rx_antenna].AddUsages(
             new[] {
                 new SpectrumBreakdown.SingleUsage{
-                    connection = null,  // TODO(egg): Pass that context.
-                    channel = null,
-                    link = link,
+                    link = sourced,
                     kind = SpectrumBreakdown.SingleUsage.Kind.Receive,
                     spectrum = usage,
             }});
       }
-      RealAntennaDigital tx_antenna = links.First().tx_antenna;
-      if (routing_.multiple_tracking_.Contains(links.First().tx)) {
+      RealAntennaDigital tx_antenna = links.First().link.tx_antenna;
+      if (routing_.multiple_tracking_.Contains(links.First().link.tx)) {
         return;
       }
       if (!spectrum_usage_.ContainsKey(tx_antenna)) {
@@ -430,8 +445,6 @@ public class Routing {
       spectrum_usage_[tx_antenna].AddUsages(
           (from link in links select
             new SpectrumBreakdown.SingleUsage{
-                connection = null,  // TODO(egg): Pass that context.
-                channel = null,
                 link = link,
                 kind = SpectrumBreakdown.SingleUsage.Kind.Transmit,
                 spectrum = usage,
@@ -472,6 +485,10 @@ public class Routing {
         routing.links_.Add((from, to), link);
       }
       return link;
+    }
+
+    public SourcedLink Unsourced() {
+      return new SourcedLink(null, null, this);
     }
 
     public readonly RACommNode tx;
