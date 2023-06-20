@@ -90,31 +90,33 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
     }
   }
 
-  private string RxReport(Routing.OrientedLink link, bool available,
-                          bool exclusive, out GUIStyle style) {
+  private string SpectrumReport(
+      RealAntennaDigital antenna, Routing.OrientedLink link, bool available,
+      bool exclusive, out GUIStyle style) {
     style = UnityEngine.GUI.skin.label;
     double this_link_spectrum =
         link.SpectrumUsageFromDataRate(connection_.data_rate);
     double total_spectrum = link.band.ChannelWidth;
-    if (exclusive && telecom_.network.routing_.IsLimited(link.rx)) {
+    if (exclusive &&
+        telecom_.network.routing_.IsLimited((RACommNode)antenna.ParentNode)) {
       double used_spectrum =
-          telecom_.network.routing_.usage.SpectrumUsage(link.rx_antenna);
+          telecom_.network.routing_.usage.SpectrumUsage(antenna);
       if (available) {
-        return $@"Rx {link.rx_antenna.Name} {
-                   RATools.PrettyPrint(this_link_spectrum)}Hz / {
-                   RATools.PrettyPrint(used_spectrum)}Hz / {
+        return $@"Uses: {
+                   RATools.PrettyPrint(this_link_spectrum)}Hz / Total: {
+                   RATools.PrettyPrint(used_spectrum)}Hz / Max: {
                    RATools.PrettyPrint(total_spectrum)}Hz";
       } else {
         double remaining_spectrum = total_spectrum - used_spectrum;
         if (this_link_spectrum > remaining_spectrum) {
           style = principia.ksp_plugin_adapter.Style.Warning(
               UnityEngine.GUI.skin.label);
-          return $@"Rx {link.rx_antenna.Name} Bandwidth-limited: would need {
-                   RATools.PrettyPrint(this_link_spectrum)}Hz / {
-                   RATools.PrettyPrint(remaining_spectrum)}Hz / {
+          return $@"Bandwidth-limited, would need: {
+                   RATools.PrettyPrint(this_link_spectrum)}Hz / Available: {
+                   RATools.PrettyPrint(remaining_spectrum)}Hz / Max: {
                    RATools.PrettyPrint(total_spectrum)}Hz";
         } else {
-          return $@"Rx {link.rx_antenna.Name} would need {
+          return $@"Would use: {
                     RATools.PrettyPrint(this_link_spectrum)}Hz / {
                     RATools.PrettyPrint(remaining_spectrum)}Hz / {
                     RATools.PrettyPrint(total_spectrum)}Hz";
@@ -122,7 +124,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
       }
     } else {
       if (available) {
-        return $@"Rx {link.rx_antenna.Name} {
+        return $@"Uses: {link.rx_antenna.Name} {
                    RATools.PrettyPrint(this_link_spectrum)}Hz / {
                    RATools.PrettyPrint(total_spectrum)}Hz";
       } else {
