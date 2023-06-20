@@ -112,8 +112,8 @@ public class Routing {
     public virtual IEnumerable<RealAntennaDigital> Transmitters() { yield break; }
     protected NetworkUsage() {}
 
-    private static PowerBreakdown NoPowerUsage = new PowerBreakdown();
-    private static SpectrumBreakdown NoSpectrumUsage = new SpectrumBreakdown();
+    protected static PowerBreakdown NoPowerUsage = new PowerBreakdown();
+    protected static SpectrumBreakdown NoSpectrumUsage = new SpectrumBreakdown();
   }
 
   public Routing() {
@@ -376,14 +376,18 @@ public class Routing {
     }
 
     public override PowerBreakdown SourcedTxPowerUsage(RealAntennaDigital tx) {
-      tx_power_usage_.TryGetValue(tx, out PowerBreakdown usage);
-      return usage;
+      if (tx_power_usage_.TryGetValue(tx, out PowerBreakdown usage)) {
+        return usage;
+      }
+      return NoPowerUsage;
     }
 
     public override SpectrumBreakdown SourcedSpectrumUsage(
         RealAntennaDigital rx) {
-      spectrum_usage_.TryGetValue(rx, out SpectrumBreakdown usage);
-      return usage;
+      if (spectrum_usage_.TryGetValue(rx, out SpectrumBreakdown usage)) {
+        return usage;
+      }
+      return NoSpectrumUsage;
     }
 
     public override IEnumerable<RealAntennaDigital> Transmitters() {

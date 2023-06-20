@@ -113,6 +113,7 @@ namespace σκοπός {
       foreach (string key in new[] { "objectName", "lat", "lon", "alt" }) {
         station_node.AddValue(key, node.GetValue(key));
       }
+      station_node.AddValue("name", name);
       station_node.AddValue("isKSC", false);
       station_node.AddValue("isHome", false);
       station_node.AddValue("icon", "RealAntennas/radio-antenna");
