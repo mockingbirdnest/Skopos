@@ -224,6 +224,41 @@ public class RoutingTest {
   }
 
   [TestMethod]
+  public void YBroadcast() {
+    // A point (v) to multipoint (x & y) communication, both via w.
+    //         y
+    //       ↗
+    // v → w → x
+    var v = MakeNode("v", -2, 0);
+    var w = MakeNode("v", -1, 0);
+    var x = MakeNode("x", 0, 0);
+    var y = MakeNode("y", 0, +1);
+    MakeLink(v, w, 1e6, 0);
+    MakeLink(w, x, 1e6, 0);
+    MakeLink(w, y, 1e6, 0);
+    Assert.AreEqual(
+        Routing.PointToMultipointAvailability.Available,
+        routing_.FindAndUseAvailableChannels(source: v,
+                                destinations: new[] {x, y},
+                                latency_limit: double.PositiveInfinity,
+                                data_rate: 1e6,
+                                out Routing.Channel[] channels,
+                                connection: null));
+    Assert.AreEqual(
+        1e6,
+        routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
+    Assert.AreEqual(
+        2e6,
+        routing_.usage.SpectrumUsage(w.FirstDigitalAntenna()));
+    Assert.AreEqual(
+        1e6,
+        routing_.usage.SpectrumUsage(x.FirstDigitalAntenna()));
+    Assert.AreEqual(
+        1e6,
+        routing_.usage.SpectrumUsage(y.FirstDigitalAntenna()));
+  }
+
+  [TestMethod]
   public void TradingLatencyForBandwidth() {
     // v and w are 2 m apart, but connected directly via a low bandwidth link.
     // They are connected at a much higher bandwidth via a geostationary

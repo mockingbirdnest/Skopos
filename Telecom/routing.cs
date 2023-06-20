@@ -63,6 +63,12 @@ public class Routing {
         usages_.Add(broadcast);
       }
 
+      public PowerBreakdown Clone() {
+        return new PowerBreakdown{
+          usages_ = usages.Select(usages => usages.ToArray()).ToList(),
+        };
+      }
+
       public IEnumerable<SingleUsage[]> usages => usages_;
 
       private List<SingleUsage[]> usages_ = new List<SingleUsage[]>();
@@ -81,6 +87,12 @@ public class Routing {
       public void AddUsages(SingleUsage[] usage) {
         spectrum += usage[0].spectrum;
         usages_.Add(usage);
+      }
+
+      public SpectrumBreakdown Clone() {
+        return new SpectrumBreakdown{
+          usages_ = usages.Select(usages => usages.ToArray()).ToList(),
+        };
       }
 
       public IEnumerable<SingleUsage[]> usages => usages_;
@@ -361,12 +373,12 @@ public class Routing {
     public RoutingNetworkUsage(Routing routing, NetworkUsage other)
         : this(routing) {
       if (other is RoutingNetworkUsage nontrival) {
-        tx_power_usage_ =
-            new Dictionary<RealAntenna, PowerBreakdown>(
-                nontrival.tx_power_usage_);
-        spectrum_usage_ =
-            new Dictionary<RealAntenna, SpectrumBreakdown>(
-                nontrival.spectrum_usage_);
+        tx_power_usage_ = nontrival.tx_power_usage_.ToDictionary(
+            entry => entry.Key,
+            entry => entry.Value.Clone());
+        spectrum_usage_ = nontrival.spectrum_usage_.ToDictionary(
+            entry => entry.Key,
+            entry => entry.Value.Clone());
       }
     }
 

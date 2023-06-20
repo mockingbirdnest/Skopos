@@ -56,9 +56,9 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                    max_tx_power:N1} W";
       } else {
         if (connection_ is PointToMultipointConnection &&
-            (from usages in tx_power_usage.usages
-             from usage in usages
-               select usage.link.connection == connection_).Any()) {
+            tx_power_usage.usages.Any(
+               usages => usages.Any(
+               usage => usage.link.connection == connection_))) {
           return $@"Draws: {
                      this_link_tx_power:N1} W / Total: {
                      used_tx_power:N1} W / Max: {
@@ -119,9 +119,9 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                    RATools.PrettyPrint(total_spectrum)}Hz";
       } else {
         if (connection_ is PointToMultipointConnection &&
-            (from usages in used_spectrum.usages
-             from usage in usages
-               select usage.link.connection == connection_).Any()) {
+            used_spectrum.usages.Any(
+               usages => usages.Any(
+               usage => usage.link.connection == connection_))) {
           return $@"Uses: {
                      RATools.PrettyPrint(this_link_spectrum)}Hz / Total: {
                      RATools.PrettyPrint(used_spectrum.spectrum)}Hz / Max: {
@@ -173,12 +173,10 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
     UnityEngine.GUILayout.Label(channel.links[0].tx.displayName);
     foreach (var link in channel.links) {
       UnityEngine.GUILayout.Label($"Tx {link.tx_antenna.Name}");
-      UnityEngine.GUILayout.Label(SpectrumReport(link.tx_antenna, link,
-                                                 available, exclusive,
-                                                 out var style));
-      UnityEngine.GUILayout.Label(TxPowerReport(link, available, exclusive,
-                                                out style),
-                                  style);
+      UnityEngine.GUILayout.Label(
+          SpectrumReport(link.tx_antenna, link, available, exclusive,
+                         out var style),
+          style);
       UnityEngine.GUILayout.Label(
           TxPowerReport(link, available, exclusive, out style),
           style);
