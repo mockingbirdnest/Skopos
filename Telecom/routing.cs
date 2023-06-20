@@ -60,10 +60,12 @@ public class Routing {
 
       public void AddUsages(SingleUsage[] broadcast) {
         power += (from usage in broadcast select usage.power).Max();
-        usages.Add(broadcast);
+        usages_.Add(broadcast);
       }
 
-      private List<SingleUsage[]> usages = new List<SingleUsage[]>();
+      public IEnumerable<SingleUsage[]> usages => usages_;
+
+      private List<SingleUsage[]> usages_ = new List<SingleUsage[]>();
     }
 
     public class SpectrumBreakdown {
@@ -78,10 +80,12 @@ public class Routing {
 
       public void AddUsages(SingleUsage[] usage) {
         spectrum += usage[0].spectrum;
-        usages.Add(usage);
+        usages_.Add(usage);
       }
 
-      private List<SingleUsage[]> usages = new List<SingleUsage[]>();
+      public IEnumerable<SingleUsage[]> usages => usages_;
+
+      private List<SingleUsage[]> usages_ = new List<SingleUsage[]>();
     }
 
     public static NetworkUsage None = new NetworkUsage();
