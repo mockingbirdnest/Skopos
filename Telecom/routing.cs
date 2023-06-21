@@ -122,6 +122,7 @@ public class Routing {
       return NoSpectrumUsage;
     }
     public virtual IEnumerable<RealAntennaDigital> Transmitters() { yield break; }
+    public virtual IEnumerable<RealAntennaDigital> Users() { yield break; }
     protected NetworkUsage() {}
 
     protected static PowerBreakdown NoPowerUsage = new PowerBreakdown();
@@ -404,6 +405,14 @@ public class Routing {
 
     public override IEnumerable<RealAntennaDigital> Transmitters() {
       foreach (var antenna in tx_power_usage_.Keys) {
+        if (antenna is RealAntennaDigital digital) {
+          yield return digital;
+        }
+      }
+    }
+
+    public override IEnumerable<RealAntennaDigital> Users() {
+      foreach (var antenna in spectrum_usage_.Keys) {
         if (antenna is RealAntennaDigital digital) {
           yield return digital;
         }

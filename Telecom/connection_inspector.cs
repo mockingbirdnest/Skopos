@@ -12,7 +12,7 @@ namespace σκοπός {
 using static Routing.NetworkUsage.SpectrumBreakdown.SingleUsage.Kind;
 
 internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWindowRenderer {
-    public ConnectionInspector(Telecom telecom, Connection connection)
+  public ConnectionInspector(Telecom telecom, Connection connection)
       : base(telecom) {
     telecom_ = telecom;
     connection_ = connection;
@@ -187,7 +187,17 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
       }
     UnityEngine.GUILayout.Label(channel.links[0].tx.displayName);
     foreach (var link in channel.links) {
-      UnityEngine.GUILayout.Label($"Tx {link.tx_antenna.Name}");
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
+        UnityEngine.GUILayout.Label($"Tx {link.tx_antenna.Name}");
+        if (telecom_.network.routing_.IsLimited(link.tx)) {
+          if (!telecom_.main_window_.antenna_inspectors.TryGetValue(
+                  link.tx_antenna, out var inspector)) {
+            inspector = new AntennaInspector(telecom_, link.tx_antenna);
+            telecom_.main_window_.antenna_inspectors[link.tx_antenna] = inspector;
+          }
+          inspector.RenderButton();
+        }
+      }
       UnityEngine.GUILayout.Label(
           SpectrumReport(link.tx_antenna, link, available, exclusive,
                          out var style),
@@ -197,7 +207,17 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
           style);
       UnityEngine.GUILayout.Label(
           $"↓ {link.length / 299792458 * 1000:N0} ms");
-      UnityEngine.GUILayout.Label($"Rx {link.rx_antenna.Name}");
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
+        UnityEngine.GUILayout.Label($"Rx {link.rx_antenna.Name}");
+        if (telecom_.network.routing_.IsLimited(link.rx)) {
+          if (!telecom_.main_window_.antenna_inspectors.TryGetValue(
+                  link.rx_antenna, out var inspector)) {
+            inspector = new AntennaInspector(telecom_, link.rx_antenna);
+            telecom_.main_window_.antenna_inspectors[link.rx_antenna] = inspector;
+          }
+          inspector.RenderButton();
+        }
+      }
       UnityEngine.GUILayout.Label(SpectrumReport(link.rx_antenna, link,
                                                  available, exclusive,
                                                  out style),

@@ -144,7 +144,7 @@ namespace σκοπός {
 
     public Network network { get; private set; }
     [KSPField(isPersistant = true)]
-    private MainWindow main_window_;
+    internal MainWindow main_window_;
     public double last_universal_time => ut_;
     [KSPField(isPersistant = true)]
     private double ut_;

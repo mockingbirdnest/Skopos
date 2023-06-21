@@ -98,6 +98,7 @@
     <Compile Include="..\..\Principia\ksp_plugin_adapter\window_renderer.cs">
       <Link>window_renderer.cs</Link>
     </Compile>
+    <Compile Include="antenna_inspector.cs" />
     <Compile Include="availability_metrics.cs" />
     <Compile Include="connection_inspector.cs" />
     <Compile Include="fake_principia_logging.cs" />

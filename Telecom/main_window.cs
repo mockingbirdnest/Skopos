@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -43,16 +44,16 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
           }
         }
       }
-      var inspected_connections = inspectors_.Keys.ToArray();
+      var inspected_connections = connection_inspectors_.Keys.ToArray();
       foreach (var inspected_connection in inspected_connections) {
         if (!telecom_.network.contracted_connections.Contains(inspected_connection)) {
-          inspectors_[inspected_connection].DisposeWindow();
-          inspectors_.Remove(inspected_connection);
+          connection_inspectors_[inspected_connection].DisposeWindow();
+          connection_inspectors_.Remove(inspected_connection);
         }
       }
       foreach (var contracted_connection in telecom_.network.contracted_connections) {
-       if (!inspectors_.ContainsKey(contracted_connection)) {
-          inspectors_.Add(
+       if (!connection_inspectors_.ContainsKey(contracted_connection)) {
+          connection_inspectors_.Add(
               contracted_connection,
               new ConnectionInspector(telecom_, contracted_connection));
        }
@@ -92,14 +93,14 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
                   UnityEngine.GUILayout.Label(
                       $"From {tx.displaynodeName} to {rx.displaynodeName}: {status}",
                       GUILayoutWidth(15));
-                  inspectors_[connection].RenderButton();
+                  connection_inspectors_[connection].RenderButton();
                 }
               } else {
                 using (new UnityEngine.GUILayout.HorizontalScope()) {
                   UnityEngine.GUILayout.Label(
                       $"Broadcast from {tx.displaynodeName} to:",
                       GUILayoutWidth(15));
-                  inspectors_[connection].RenderButton();
+                  connection_inspectors_[connection].RenderButton();
                 }
               }
               for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
@@ -121,7 +122,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
                 UnityEngine.GUILayout.Label(
                     $@"Duplex  between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
                     GUILayoutWidth(15));
-                inspectors_[connection].RenderButton();
+                connection_inspectors_[connection].RenderButton();
               }
             }
           }
@@ -132,11 +133,16 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
     UnityEngine.GUI.DragWindow();
   }
 
+  public Dictionary<RealAntennaDigital, AntennaInspector> antenna_inspectors =>
+    antenna_inspectors_;
+
   private Telecom telecom_;
   private readonly Dictionary<Contracts.Contract, bool> open_contracts_ =
       new Dictionary<Contracts.Contract, bool>();
-  private readonly Dictionary<Connection, ConnectionInspector> inspectors_ =
+  private readonly Dictionary<Connection, ConnectionInspector> connection_inspectors_ =
       new Dictionary<Connection, ConnectionInspector>();
+  private readonly Dictionary<RealAntennaDigital, AntennaInspector> antenna_inspectors_ =
+      new Dictionary<RealAntennaDigital, AntennaInspector>();
 }
 
 }
