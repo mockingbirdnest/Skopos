@@ -9,6 +9,8 @@ using UnityEngine;
 
 namespace σκοπός {
 
+using static Routing.NetworkUsage.SpectrumBreakdown.SingleUsage.Kind;
+
 internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWindowRenderer {
     public ConnectionInspector(Telecom telecom, Connection connection)
       : base(telecom) {
@@ -58,13 +60,24 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
         if (connection_ is PointToMultipointConnection &&
             tx_power_usage.usages.Any(
                usages => usages.Any(
-               usage => usage.link.connection == connection_))) {
+               usage => usage.link.connection == connection_ &&
+                        usage.link.link.rx_antenna == link.rx_antenna))) {
           return $@"Draws: {
                      this_link_tx_power:N1} W / Total: {
                      used_tx_power:N1} W / Max: {
                      max_tx_power:N1} W";
         } else {
-          double remaining_power = max_tx_power - used_tx_power;
+          double remaining_power = max_tx_power;
+          if (connection_ is PointToMultipointConnection) {
+            foreach (var usages in tx_power_usage.usages) {
+              if (usages.First().link.connection != connection_) {
+                remaining_power -= link.tx_antenna.PowerDrawLinear * 1e-3 *
+                    usages.Max(usage => usage.power);
+              }
+            }
+          } else {
+           remaining_power -= used_tx_power;
+          }
           if (this_link_tx_power > remaining_power) {
             style = principia.ksp_plugin_adapter.Style.Warning(
                 UnityEngine.GUI.skin.label);
@@ -83,7 +96,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
     } else {
       if (available) {
         return $@"Draws: {
-                   this_link_tx_power:N1} W / Total: {
+                   this_link_tx_power:N1} W / Max: {
                    max_tx_power:N1} W";
       } else {
         if (this_link_tx_power > max_tx_power) {
@@ -121,7 +134,9 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
         if (connection_ is PointToMultipointConnection &&
             used_spectrum.usages.Any(
                usages => usages.Any(
-               usage => usage.link.connection == connection_))) {
+               usage => usage.link.connection == connection_ &&
+                  ((link.rx_antenna == antenna && usage.kind == Receive) ||
+                    (link.tx_antenna == antenna && usage.kind == Transmit))))) {
           return $@"Uses: {
                      RATools.PrettyPrint(this_link_spectrum)}Hz / Total: {
                      RATools.PrettyPrint(used_spectrum.spectrum)}Hz / Max: {
@@ -146,7 +161,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
     } else {
       if (available) {
         return $@"Uses: {
-                   RATools.PrettyPrint(this_link_spectrum)}Hz / Total: {
+                   RATools.PrettyPrint(this_link_spectrum)}Hz / Max: {
                    RATools.PrettyPrint(total_spectrum)}Hz";
       } else {
         if (this_link_spectrum > total_spectrum) {
