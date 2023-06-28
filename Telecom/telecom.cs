@@ -60,6 +60,9 @@ namespace σκοπός {
                     ALWAYS,
                 texture         : toolbar_button_texture);
       }
+      if (HighLogic.LoadedScene == GameScenes.EDITOR) {
+        main_window_.Hide();
+      }
       // Make sure the state of the toolbar button remains consistent with the
       // state of the window.
       if (main_window_.Shown()) {
