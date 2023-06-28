@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using CommNet.Network;
 using RealAntennas;
 using RealAntennas.Network;
-
+using Smooth.Collections;
 using static σκοπός.Routing.PointToMultipointAvailability;
 
 namespace σκοπός {
@@ -66,6 +66,7 @@ public class Routing {
       public PowerBreakdown Clone() {
         return new PowerBreakdown{
           usages_ = usages.Select(usages => usages.ToArray()).ToList(),
+          power = power,
         };
       }
 
@@ -92,6 +93,7 @@ public class Routing {
       public SpectrumBreakdown Clone() {
         return new SpectrumBreakdown{
           usages_ = usages.Select(usages => usages.ToArray()).ToList(),
+          spectrum = spectrum
         };
       }
 
