@@ -75,7 +75,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
           if (UnityEngine.GUILayout.Button(
                 open_contracts_[contract] ? "−" : "+", GUILayoutWidth(1))) {
             open_contracts_[contract] = !open_contracts_[contract];
-            Shrink();
+            ScheduleShrink();
             return;
           }
           UnityEngine.GUILayout.Label(contract.Title);

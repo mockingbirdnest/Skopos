@@ -261,7 +261,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
             if (UnityEngine.GUILayout.Button(
                   receiver_open_[i] ? "−" : "+", GUILayoutWidth(1))) {
               receiver_open_[i] = !receiver_open_[i];
-              Shrink();
+              ScheduleShrink();
               return;
             }
             UnityEngine.GUILayout.Label($"{rx.displaynodeName}: {status}");
