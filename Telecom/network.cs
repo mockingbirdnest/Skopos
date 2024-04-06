@@ -113,6 +113,13 @@ namespace σκοπός {
       foreach (string key in new[] { "objectName", "lat", "lon", "alt" }) {
         station_node.AddValue(key, node.GetValue(key));
       }
+      foreach (string key in new[] { "isControlSource",
+                                     "isControlSourceMultiHop" }) {
+        string value = null;
+        if (node.TryGetValue(key, ref value)) {
+          station_node.AddValue(key, node.GetValue(value));
+        }
+      }
       station_node.AddValue("name", name);
       station_node.AddValue("isKSC", false);
       station_node.AddValue("isHome", false);
