@@ -117,7 +117,7 @@ namespace σκοπός {
                                      "isControlSourceMultiHop" }) {
         string value = null;
         if (node.TryGetValue(key, ref value)) {
-          station_node.AddValue(key, node.GetValue(value));
+          station_node.AddValue(key, node.GetValue(key));
         }
       }
       station_node.AddValue("name", name);
