@@ -1,0 +1,35 @@
+List of sources and citations used for Skopos, in no particular order
+[1] Intelligence Memorandum Soviet Comsat Program: Status and Prospects, 1968
+	https://irp.fas.org/cia/product/sovcom68.pdf
+[2] Rockets and People Volume III: Hot Days of the Cold War, 2009
+	https://www.nasa.gov/history/history-publications-and-resources/nasa-history-series/rockets-and-people/
+[3] Newly Identified Comsat Ground Station Near Tapaste, Cuba, 1972
+	https://www.cia.gov/readingroom/docs/CIA-RDP83-01074R000300140002-1.pdf
+[4] NASA Compendium of Satellite Communications Programs, 1973
+	https://ntrs.nasa.gov/citations/19730022102
+[5] Soviet Satellite Communications Science and Technology, 1991
+	https://www.osti.gov/servlets/purl/5123315
+[6] Current Activities in Small Earth Terminal Satellite Domestic Telecommunications, 1978
+	https://its.ntia.gov/umbraco/surface/download/publication?reportNumber=78-9_ocr.pdf
+[7] Radio Pioneers History of the Radio Research Institute, 2014
+	https://medium.com/@vorobiev_ivan/-b6929c05e377
+[8] History of the creation and development of domestic satellite communication and broadcasting systems, 2008
+	https://www.computer-museum.ru/connect/sputnik.htm
+[9] STDN User's Guide Baseline Document Rev. 2, 1974
+	https://web.archive.org/web/20100517062101/http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19750071915_1975071915.pdf
+[10] The NASCOM Communications Network, 
+	https://honeysucklecreek.net/msfn_missions/MSFN/NASCOM.html
+[11] USNS Kingsport
+	https://en.wikipedia.org/wiki/USNS_Kingsport
+[12] The MARISAT System, 1977
+	https://www.sciencedirect.com/science/article/pii/0094576578900565?fr=RR-1&ref=cra_js_challenge
+[13] Our World (1967 TV program)
+	https://en.wikipedia.org/wiki/Our_World_(1967_TV_program)
+[14] Intelsat 3
+	https://space.skyrocket.de/doc_sdat/intelsat-3.htm
+[15] Recent Trends in Soviet Satellite Communications, 1970
+	https://www.cia.gov/readingroom/docs/CIA-RDP85T00875R001600030124-1.pdf
+[16] Soviet Union [USSR] Communications, 1989
+	http://reference.allrefer.com/country-guide-study/soviet-union/soviet-union390.html
+[17] Elements of Soviet Economic and Technical Aid to Laos, 1984
+	https://www.jstor.org/stable/43738032
