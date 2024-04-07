@@ -33,3 +33,7 @@ List of sources and citations used for Skopos, in no particular order
 	http://reference.allrefer.com/country-guide-study/soviet-union/soviet-union390.html
 [17] Elements of Soviet Economic and Technical Aid to Laos, 1984
 	https://www.jstor.org/stable/43738032
+[18] Molniya-1 tracking from Sweden, 2006
+	http://www.svengrahn.pp.se/radioind/Molniya1/Molniya1track.html
+[19] UHF-Satcom.com, 2022
+	https://uhf-satcom.com/
