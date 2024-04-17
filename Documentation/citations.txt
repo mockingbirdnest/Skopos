@@ -37,3 +37,7 @@ List of sources and citations used for Skopos, in no particular order
 	http://www.svengrahn.pp.se/radioind/Molniya1/Molniya1track.html
 [19] UHF-Satcom.com, 2022
 	https://uhf-satcom.com/
+[20] FM-6 Technical Description, 2011
+	https://fcc.report/IBFS/SAT-MOD-20110525-00099/890641.pdf
+[21] BASIC SATELLITE AND OUT OF FOOTPRINT RECEPTION, 2006?
+	https://www.apsattv.com/techinfo/predicting-out-of-footprint-coverage.htm
