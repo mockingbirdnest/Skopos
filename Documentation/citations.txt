@@ -41,3 +41,9 @@ List of sources and citations used for Skopos, in no particular order
 	https://fcc.report/IBFS/SAT-MOD-20110525-00099/890641.pdf
 [21] BASIC SATELLITE AND OUT OF FOOTPRINT RECEPTION, 2006?
 	https://www.apsattv.com/techinfo/predicting-out-of-footprint-coverage.htm
+[22] My First Satellite TV Experiments
+	https://web.archive.org/web/20050211022612/http://www.qsl.net/zs6bte/My%20First%20Satellite%20TV%20Experiments.html
+[23] Satellite "Ekran-M", 2001
+	https://old.telesputnik.ru/archive/68/article/36.html
+[24] Products “Ekran-M1”, “Ekran-M10”, “Ekran-MK”, 2009
+	http://r91353ba.beget.tech/ecran_m.html
