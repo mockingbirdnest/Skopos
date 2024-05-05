@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace σκοπός {
-// A class that tracks the availability of some service in daily buckets
-// Metrics derived from daily availability can be registered.
-public class Service {
+  // A class that tracks the availability of some service in daily buckets
+  // Metrics derived from daily availability can be registered.
+  public class Service {
   public Service(int window_size) {
     this.window_size = window_size;
   }

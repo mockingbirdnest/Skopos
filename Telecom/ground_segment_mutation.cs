@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using ContractConfigurator;
-using ContractConfigurator.Behaviour;
 
 namespace σκοπός {
   public abstract class GroundSegmentMutationFactory : BehaviourFactory {

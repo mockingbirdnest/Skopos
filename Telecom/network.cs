@@ -1,15 +1,10 @@
 ﻿using RealAntennas;
-using RealAntennas.Antenna;
 using RealAntennas.MapUI;
 using RealAntennas.Network;
-using RealAntennas.Precompute;
 using RealAntennas.Targeting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace σκοπός {
   public class Network {

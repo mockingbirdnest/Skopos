@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using RealAntennas;
-using RealAntennas.Network;
 using RealAntennas.MapUI;
-using RealAntennas.Targeting;
 using System.IO;
 using System.Runtime.CompilerServices;
 
