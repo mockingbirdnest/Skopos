@@ -14,7 +14,7 @@ Satellite telecom Frequency assignments
 //  Intelsat IV: Uplink at 5930-6420 MHz, downlink at 3705-4195 MHz
 //  Molniya 1: Uplink at 800? MHz, downlink at 970-1000 MHz [18]
 //  Molniya 2: Uplink at 5730-6205 MHz, downlink at 3405-3880 MHz
-//  Ekran: Uplink at 5730-6205? MHz, downlink at 714-754 MHz
+//  Ekran: Uplink at 5730-6205? MHz, downlink at 714-754 MHz [5]
 //  DSCS Phase I: Uplink at 7985-8004 MHz, downlink at 7267-7285 MHz
 //  ATS-1: Uplink at 149 & 6212 MHz, downlink at 135 & 4119 MHz
 //  ATS-3: Uplink at 149 & 6301 MHz, downlink at 135 & 4178 MHz
@@ -25,8 +25,10 @@ Satellite telecom Frequency assignments
 //  SKYNET: Uplink at 7985-8005 MHz, downlink at 7266-7286 MHz
 //  NATO Phase II: Uplink at 7985-8005 MHz, downlink at 7266-7286 MHz
 //  DSCS Phase II: Uplink at 7900-8400 MHz, downlink at 7250-7750 MHz
-//  ANIK I/II: Uplink at 5900-6400 MHz, downlink at 3700-4200 MHz
+//  ANIK A: Uplink at 5900-6400 MHz, downlink at 3700-4200 MHz
 //  CTS: Uplink at 14010-14296 MHz, downlink at 11843-12123 MHz
+//  Westar 1: Uplink at 5925-6425 MHz, downlink at 3700-4200 MHz
+//  Comstar 1: Uplink at 5925-6425 MHz, downlink at 3700-4200 MHz, two polarized beams
 //  Marisat: Uplink at 300-312 & 1638-1642 & 6420-6424 MHz, downlink at 248-260 & 1537-1541 & 4195-4199 MHz [12]
 //  XM Radio: Uplink at 7050-7072 MHz, downlink at 2320-2332 MHz [20]
 
@@ -47,3 +49,32 @@ Satellite TT&C frequency assignments
 //  Meridian uses UHF TT&C [19]
 //  Since I can't control if a station is TT&C capable on a per-Antenna or per-TL basis, just disable all
 //  And create dedicated ground stations for TT&C
+
+Modulator/encoder modes
+This isn't really inherent to the satellites, most commsats operate in bent-pipe mode and will just accept whatever they're fed
+However, it gives a good idea of what the state of the art was for ground station configuration
+//  1962 - Telstar 1/2: FM
+//  1963 - Syncom I/II/III: FM or PSK
+//  1964 - Molniya-1/2: FM [4, p.11-15]
+//  1965 - LES-1/2/4: MFSK16, but only for frequency-hopping [4, p.9-9]
+//  1965 - LES-3/5/6: FM or FSK [4, p.9-28]
+//  1965 - Intelsat I/II/III: FM [4, p.10-25]
+//  1966 - ATS-1/3: SSB, FM, PSK or QPSK [4, p.13-10]
+//  1966 - DSCS Phase I: FM, MFSK, or PSK [4, p.12-27] (MFSK only for frequency-hopping?)
+//  1967 - ATS-2/4/5: SSB or FM [4, p.13-52]
+//  1969 - TACSAT: FM, MFSK, PSK, or FSK [4, p.14-8] (MFSK only for frequency-hopping) [4, p.14-13]
+//  1969 - SKYNET: FM [4, p.15-6]
+//  1970 - NATO Phase II: FM [4, p.16-5]
+//  1971 - DSCS Phase II: FM, PSK [4, p.17-3]
+//  1971 - Intelsat IV/IVA: FM on most transponders, QPSK on SPADE transponder [4, p10-25/26]
+//  1972 - Anik A: FM, PSK [4, p.18-2]
+//  1974 - ATS-6: FM [4, p.13-107]
+//  1974 - Westar 1: QPSK (with ASC terminals) [4, p.20-5]
+//  1975 - Satcom 1: FM? [4, p.20-30]
+//  1976 - NATO Phase III: FM [4, p. 16-11]
+//  1976 - CTS: FM? [4, p.19-16]
+//  1976 - Comstar 1: FM? [4, p.20-16]
+//  1976 - Marisat: FM or CPSK [12, p.257]
+//  2000 - FM-1: QPSK [20, p.8]
+//  2013 - FM-6: QPSK in legacy mode or 8PSK in overlay mode [20, p.8]
+//  2003 - Intelsat general: 16QAM standards created? [29, p.C-1]
