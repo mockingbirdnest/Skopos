@@ -55,3 +55,5 @@ List of sources and citations used for Skopos, in no particular order
 	https://web.archive.org/web/20080617211454/http://www.astronautix.com/craft/gorizont.htm
 [28] Mobile Satellite Communications Markets: Dynamics and Trends, 2017
 	https://doi.org/10.1007/978-3-319-23386-4_7
+[29] Intelsat Earth Station Standards Document IESS-316
+	https://www.intelsat.com/wp-content/uploads/2020/08/iess-316e.pdf
