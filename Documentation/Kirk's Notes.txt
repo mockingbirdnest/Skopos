@@ -83,3 +83,25 @@ However, it gives a good idea of what the state of the art was for ground statio
 //  2000 - FM-1: QPSK [20, p.8]
 //  2003 - Intelsat general: 16QAM standards created? [29, p.C-1]
 //  2013 - FM-6: QPSK in legacy mode or 8PSK in overlay mode [20, p.8]
+
+RA noise figures
+Historical noise figures are typically given for the whole system at a given elevation (7.5 degrees)
+RA attempts to add noise based on body noise, antenna elevation, etc.
+So, find the noise RA adds and remove it from historical figures to get antenna noise in isolation
+L-band:
+elevation - atmo noise - body noise
+90 2 0
+60 2 0
+45 3 0
+30 4 0
+15 8 0
+7.5 16 0
+
+C-band:
+elevation - atmo noise - body noise
+90 29 0
+60 33 0
+45 40 0
+30 55 0
+15 96 0
+7.5 155 0
