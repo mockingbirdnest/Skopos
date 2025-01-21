@@ -10,7 +10,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
     telecom_ = telecom;
   }
 
-  public bool show_network { get; private set; } = true;
+  public bool show_network { get; private set; } = false;
 
   protected override string Title => "Σκοπός Telecom network overview";
 
