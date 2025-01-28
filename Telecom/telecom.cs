@@ -8,7 +8,8 @@ using System.Runtime.CompilerServices;
 
 namespace σκοπός {
   [KSPScenario(
-    ScenarioCreationOptions.AddToAllGames,
+    ScenarioCreationOptions.AddToNewCareerGames | ScenarioCreationOptions.AddToExistingCareerGames |
+    ScenarioCreationOptions.RemoveFromSandboxGames | ScenarioCreationOptions.RemoveFromScienceSandboxGames,
     new[] { GameScenes.SPACECENTER, GameScenes.TRACKSTATION, GameScenes.FLIGHT, GameScenes.EDITOR })]
   public sealed class Telecom : ScenarioModule, principia.ksp_plugin_adapter.SupervisedWindowRenderer.ISupervisor {
 
