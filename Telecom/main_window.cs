@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using RealAntennas;
+using UnityEngine;
+using principia.ksp_plugin_adapter;
 
 namespace σκοπός {
 
@@ -64,6 +66,17 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
           open_contracts_.Add(contract, false);
         }
       }
+      var connectionLabelStyle = Style.Multiline(GUI.skin.label);
+      var okStyle = new GUIStyle(Style.RightAligned(GUI.skin.label)){
+        focused = {
+            textColor = XKCDColors.Lime
+        },
+        normal = {
+            textColor = XKCDColors.Lime
+        }
+      };
+      var disconnectedStyle = Style.RightAligned(Style.Error(GUI.skin.label));
+      
       foreach (var contract_connections in telecom_.network.connections_by_contract) {
         var contract = contract_connections.Key;
         var connections = contract_connections.Value;
@@ -85,16 +98,20 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
                 var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[0]);
                 bool available = services.basic.available;
                 string status = available ? "OK" : "Disconnected";
+                var statusStyle = available ? okStyle : disconnectedStyle;
                 using (new UnityEngine.GUILayout.HorizontalScope()) {
                   UnityEngine.GUILayout.Label(
-                      $"From {tx.displaynodeName} to {rx.displaynodeName}: {status}",
-                      GUILayoutWidth(15));
+                      $"From {tx.displaynodeName} to {rx.displaynodeName}: ",
+                      connectionLabelStyle,
+                      GUILayoutWidth(11));
+                  UnityEngine.GUILayout.Label( $"{status}", statusStyle, GUILayoutWidth(4));
                   connection_inspectors_[connection].RenderButton();
                 }
               } else {
                 using (new UnityEngine.GUILayout.HorizontalScope()) {
                   UnityEngine.GUILayout.Label(
                       $"Broadcast from {tx.displaynodeName} to:",
+                      connectionLabelStyle,
                       GUILayoutWidth(15));
                   connection_inspectors_[connection].RenderButton();
                 }
@@ -103,10 +120,14 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
                 var services = point_to_multipoint.channel_services[i];
                 bool available = services.basic.available;
                 string status = available ? "OK" : "Disconnected";
+                var statusStyle = available ? okStyle : disconnectedStyle;
                 var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[i]);
                 if (point_to_multipoint.rx_names.Length > 1) {
-                  UnityEngine.GUILayout.Label(
-                    $@"— {rx.displaynodeName}: {status}");
+                  using (new UnityEngine.GUILayout.HorizontalScope()) {
+                    UnityEngine.GUILayout.Label(
+                      $@"— {rx.displaynodeName}: ", connectionLabelStyle);
+                    UnityEngine.GUILayout.Label( $"{status}", statusStyle, GUILayoutWidth(4));
+                  }
                 }
               }
             } else if (connection is DuplexConnection duplex) {
@@ -114,10 +135,13 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
               var trx1 = telecom_.network.GetStation(duplex.trx_names[1]);
               bool available = duplex.basic_service.available;
               string status = available ? "OK" : "Disconnected";
+              var statusStyle = available ? okStyle : disconnectedStyle;
               using (new UnityEngine.GUILayout.HorizontalScope()) {
                 UnityEngine.GUILayout.Label(
-                    $@"Duplex  between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
-                    GUILayoutWidth(15));
+                    $@"Duplex  between {trx0.displaynodeName} and {trx1.displaynodeName}",
+                     connectionLabelStyle,
+                     GUILayoutWidth(11));
+                  UnityEngine.GUILayout.Label( $"{status}", statusStyle, GUILayoutWidth(4));
                 connection_inspectors_[connection].RenderButton();
               }
             }
