@@ -115,6 +115,9 @@ namespace σκοπός {
       if (!main_window_.show_network) {
         return;
       }
+      if (!MapView.MapIsEnabled) {
+        return;
+      }
       var ui = CommNet.CommNetUI.Instance as RACommNetUI;
       if (ui == null) {
         return;
