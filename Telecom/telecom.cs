@@ -53,8 +53,10 @@ namespace σκοπός {
                 onHoverOut      : null,
                 onEnable        : null,
                 onDisable       : null,
-                visibleInScenes : KSP.UI.Screens.ApplicationLauncher.AppScenes.
-                    ALWAYS & ~KSP.UI.Screens.ApplicationLauncher.AppScenes.VAB & ~KSP.UI.Screens.ApplicationLauncher.AppScenes.SPH,
+                visibleInScenes :
+                    KSP.UI.Screens.ApplicationLauncher.AppScenes.ALWAYS &
+                    ~KSP.UI.Screens.ApplicationLauncher.AppScenes.VAB &
+                    ~KSP.UI.Screens.ApplicationLauncher.AppScenes.SPH,
                 texture         : toolbar_button_texture);
       }
       if (HighLogic.LoadedScene == GameScenes.EDITOR) {
