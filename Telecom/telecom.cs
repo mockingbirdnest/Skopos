@@ -54,12 +54,12 @@ namespace σκοπός {
                 onEnable        : null,
                 onDisable       : null,
                 visibleInScenes : KSP.UI.Screens.ApplicationLauncher.AppScenes.
-                    ALWAYS,
+                    ALWAYS & ~KSP.UI.Screens.ApplicationLauncher.AppScenes.VAB & ~KSP.UI.Screens.ApplicationLauncher.AppScenes.SPH,
                 texture         : toolbar_button_texture);
       }
-      if (HighLogic.LoadedScene == GameScenes.EDITOR) {
-        main_window_.Hide();
-      }
+      //if (HighLogic.LoadedScene == GameScenes.EDITOR) {
+      //  main_window_.Hide();
+      //}
       // Make sure the state of the toolbar button remains consistent with the
       // state of the window.
       if (main_window_.Shown()) {
