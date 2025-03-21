@@ -67,14 +67,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
         }
       }
       var connectionLabelStyle = Style.Multiline(GUI.skin.label);
-      var okStyle = new GUIStyle(Style.RightAligned(GUI.skin.label)){
-        focused = {
-            textColor = XKCDColors.Lime
-        },
-        normal = {
-            textColor = XKCDColors.Lime
-        }
-      };
+      var okStyle = Style.RightAligned(GUI.skin.label);
       var disconnectedStyle = Style.RightAligned(Style.Error(GUI.skin.label));
       
       foreach (var contract_connections in telecom_.network.connections_by_contract) {
