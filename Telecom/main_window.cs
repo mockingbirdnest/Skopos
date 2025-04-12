@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using RealAntennas;
-using UnityEngine;
 using principia.ksp_plugin_adapter;
+using RealAntennas;
 
 namespace σκοπός {
 
-internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRenderer {
+  internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRenderer {
   public MainWindow(Telecom telecom) : base(telecom) {
     telecom_ = telecom;
   }
@@ -66,10 +65,11 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
           open_contracts_.Add(contract, false);
         }
       }
-      var connectionLabelStyle = Style.Multiline(GUI.skin.label);
-      var okStyle = Style.RightAligned(GUI.skin.label);
-      var disconnectedStyle = Style.RightAligned(Style.Error(GUI.skin.label));
-      
+      var connection_label_style = Style.Multiline(UnityEngine.GUI.skin.label);
+      var ok_style = Style.RightAligned(UnityEngine.GUI.skin.label);
+      var disconnected_style = Style.RightAligned(
+          Style.Error(UnityEngine.GUI.skin.label));
+
       foreach (var contract_connections in telecom_.network.connections_by_contract) {
         var contract = contract_connections.Key;
         var connections = contract_connections.Value;
@@ -91,20 +91,21 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
                 var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[0]);
                 bool available = services.basic.available;
                 string status = available ? "OK" : "Disconnected";
-                var statusStyle = available ? okStyle : disconnectedStyle;
+                var status_style = available ? ok_style : disconnected_style;
                 using (new UnityEngine.GUILayout.HorizontalScope()) {
                   UnityEngine.GUILayout.Label(
                       $"From {tx.displaynodeName} to {rx.displaynodeName}: ",
-                      connectionLabelStyle,
+                      connection_label_style,
                       GUILayoutWidth(11));
-                  UnityEngine.GUILayout.Label( $"{status}", statusStyle, GUILayoutWidth(4));
+                  UnityEngine.GUILayout.Label(
+                      $"{status}", status_style, GUILayoutWidth(4));
                   connection_inspectors_[connection].RenderButton();
                 }
               } else {
                 using (new UnityEngine.GUILayout.HorizontalScope()) {
                   UnityEngine.GUILayout.Label(
                       $"Broadcast from {tx.displaynodeName} to:",
-                      connectionLabelStyle,
+                      connection_label_style,
                       GUILayoutWidth(15));
                   connection_inspectors_[connection].RenderButton();
                 }
@@ -113,13 +114,14 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
                 var services = point_to_multipoint.channel_services[i];
                 bool available = services.basic.available;
                 string status = available ? "OK" : "Disconnected";
-                var statusStyle = available ? okStyle : disconnectedStyle;
+                var status_style = available ? ok_style : disconnected_style;
                 var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[i]);
                 if (point_to_multipoint.rx_names.Length > 1) {
                   using (new UnityEngine.GUILayout.HorizontalScope()) {
                     UnityEngine.GUILayout.Label(
-                      $@"— {rx.displaynodeName}: ", connectionLabelStyle);
-                    UnityEngine.GUILayout.Label( $"{status}", statusStyle, GUILayoutWidth(4));
+                        $@"— {rx.displaynodeName}: ", connection_label_style);
+                    UnityEngine.GUILayout.Label(
+                        $"{status}", status_style, GUILayoutWidth(4));
                   }
                 }
               }
@@ -128,13 +130,14 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
               var trx1 = telecom_.network.GetStation(duplex.trx_names[1]);
               bool available = duplex.basic_service.available;
               string status = available ? "OK" : "Disconnected";
-              var statusStyle = available ? okStyle : disconnectedStyle;
+              var status_style = available ? ok_style : disconnected_style;
               using (new UnityEngine.GUILayout.HorizontalScope()) {
                 UnityEngine.GUILayout.Label(
                     $@"Duplex  between {trx0.displaynodeName} and {trx1.displaynodeName}",
-                     connectionLabelStyle,
-                     GUILayoutWidth(11));
-                  UnityEngine.GUILayout.Label( $"{status}", statusStyle, GUILayoutWidth(4));
+                    connection_label_style,
+                    GUILayoutWidth(11));
+                UnityEngine.GUILayout.Label(
+                    $"{status}", status_style, GUILayoutWidth(4));
                 connection_inspectors_[connection].RenderButton();
               }
             }
