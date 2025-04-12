@@ -6,7 +6,7 @@ using RealAntennas;
 
 namespace σκοπός {
 
-  internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRenderer {
+internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRenderer {
   public MainWindow(Telecom telecom) : base(telecom) {
     telecom_ = telecom;
   }
