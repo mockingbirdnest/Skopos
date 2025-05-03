@@ -314,23 +314,6 @@ namespace σκοπός {
 
         var link = OrientedLink.Get(this, from: tx, to: rx);
 
-        if (is_point_to_multipoint &&
-            !multiple_tracking_.Contains(tx) &&
-            !link.is_at_tx_tech_level) {
-          // DRVeyl says: RA kindly assumes higher-tech equipment can
-          // automatically realize it should run an earlier encoding!
-          // We are less kind than that when broadcasting, because then the
-          // lower-tech links would be incompatible with the higher-tech ones.
-          // We could get away with just using the links at a given tech level,
-          // e.g., the max or the min available, but then existing links would
-          // become ineligible when adding a receiver, which would be deeply
-          // confusing.  Intsead we just assume that along a broadcast channel,
-          // everything but fancy Earth stations simply transmits using an
-          // encoding and a modulation predetermined at construction.
-          // For point-to-point connections we retain the RA kindness.
-          continue;
-        }
-
         if (link.CapacityWithUsage(usage) < data_rate) {
           continue;
         }
