@@ -30,6 +30,7 @@ Satellite telecom Frequency assignments
 //  Westar 1: Uplink at 5925-6425 MHz, downlink at 3700-4200 MHz
 //  Comstar 1: Uplink at 5925-6425 MHz, downlink at 3700-4200 MHz, two polarized beams
 //  Marisat: Uplink at 300-312 & 1638-1642 & 6420-6424 MHz, downlink at 248-260 & 1537-1541 & 4195-4199 MHz [12]
+//  CS-2: Uplink at 6???-6??? & 27625-28945 MHz, downlink at 4???-4??? & 17825-19145 MHz [35]
 //  XM Radio: Uplink at 7050-7072 MHz, downlink at 2320-2332 MHz [20]
 
 Satellite TT&C frequency assignments
@@ -76,6 +77,7 @@ However, it gives a good idea of what the state of the art was for ground statio
 //  1976 - Comstar 1: FM? [4, p.20-16]
 //  1976 - Marisat: FM or CPSK [12, p.257]
 //  1983 - Soviet general: Deployment of MDVU-40 equipment [30, p.3-50], a.k.a TDMA-40(?), implied to use QPSK encoding [5, p.IV-7]
+//  1983 - CS-2 (Sakura): CS-2 offers QPSK and TDMA-65 in Ka-band [35]
 //  1985 - Intelsat V: Intelsat V supports TDMA-120, implied to use QPSK [5, p.IV-7]
 //  1986 - Intersputnik general: Intersputnik stations still use FM for TV, but digital TDMA-40 mode for voice is rolled out [5, p.A-3]
 //  1989 - Intelsat VI: TDMA-140 or TDMA-155 employed, using 8PSK [5, p.IV-7]
