@@ -17,29 +17,6 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
   protected override void RenderWindowContents(int window_id) {
     using (new UnityEngine.GUILayout.VerticalScope()) {
       show_network = UnityEngine.GUILayout.Toggle(show_network, "Show network");
-      if (false) {
-        using (new UnityEngine.GUILayout.HorizontalScope()) {
-          if (UnityEngine.GUILayout.Button("Add nominal location") && FlightGlobals.ActiveVessel != null) {
-            telecom_.network.AddNominalLocation(FlightGlobals.ActiveVessel);
-            return;
-          }
-          if (UnityEngine.GUILayout.Button("Clear nominal locations")) {
-            telecom_.network.ClearNominalLocations();
-            return;
-          }
-          telecom_.network.freeze_customers_ =
-              UnityEngine.GUILayout.Toggle(telecom_.network.freeze_customers_, "Freeze customers");
-        }
-        foreach (Vector3d location in telecom_.network.GetNominalLocationLatLonAlts()) {
-          UnityEngine.GUILayout.Label($"{location.x:F2}°, {location.y:F2}°, {location.z / 1000:F0} km");
-        }
-        using (new UnityEngine.GUILayout.HorizontalScope()) {
-          if (int.TryParse(UnityEngine.GUILayout.TextField(
-                telecom_.network.customer_pool_size.ToString()), out int pool_size)) {
-            telecom_.network.customer_pool_size = Math.Max(pool_size, 0);
-          }
-        }
-      }
       var inspected_connections = connection_inspectors_.Keys.ToArray();
       foreach (var inspected_connection in inspected_connections) {
         if (!telecom_.network.contracted_connections.Contains(inspected_connection)) {
