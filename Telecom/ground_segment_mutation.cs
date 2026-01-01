@@ -98,12 +98,7 @@ namespace σκοπός {
     protected void Behave() {
       if (operation_ == Operation.ADD) {
         Telecom.Instance.network.AddStations(stations_);
-        Telecom.Instance.network.AddCustomers(customers_);
         Telecom.Instance.network.AddConnections(connections_);
-      } else {
-        Telecom.Instance.network.RemoveStations(stations_);
-        Telecom.Instance.network.RemoveCustomers(customers_);
-        Telecom.Instance.network.RemoveConnections(connections_);
       }
       Telecom.Instance.network.Refresh();
     }

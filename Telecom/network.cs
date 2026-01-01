@@ -19,17 +19,6 @@ namespace σκοπός {
       throw new KeyNotFoundException($"No definition for station {name}");
     }
 
-    static ConfigNode GetCustomerDefinition(string name) {
-      foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
-        foreach (var definition in block.config.GetNodes("customer")) {
-          if (definition.GetValue("name") == name) {
-            return definition;
-          }
-        }
-      }
-      throw new KeyNotFoundException($"No definition for customer {name}");
-    }
-
     static ConfigNode GetConnectionDefinition(string name) {
       foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
         foreach (var definition in block.config.GetNodes("connection")) {
@@ -52,7 +41,6 @@ namespace σκοπός {
         return;
       }
       AddStations(network_specification.GetValues("station"));
-      AddCustomers(network_specification.GetValues("customer"));
       ConfigNode[] connection_nodes = network_specification.GetNodes("connection");
       AddConnections(connection_nodes.Select(n => n.GetValue("name")));
       foreach (ConfigNode node in connection_nodes) {
@@ -64,27 +52,12 @@ namespace σκοπός {
       foreach (string station in stations_.Keys) {
         node.AddValue("station", station);
       }
-      foreach (string customer in customers_.Keys) {
-        node.AddValue("customer", customer);
-      }
       foreach (var name_connection in connections_) {
         string name = name_connection.Key;
         Connection connection = name_connection.Value;
         ConfigNode connection_node = node.AddNode("connection");
         connection_node.AddValue("name", name);
         connection.Save(connection_node);
-      }
-    }
-
-    private void RebuildGraph() {
-      int n = stations_.Count + customers_.Count;
-      names_ = new string[n];
-      int k = 0;
-      foreach (string name in stations_.Keys) {
-        names_[k++] = name;
-      }
-      foreach (string name in customers_.Keys) {
-        names_[k++] = name;
       }
     }
 
@@ -134,16 +107,6 @@ namespace σκοπός {
       return station;
     }
 
-      public void AddCustomers(IEnumerable<string> names) {
-      foreach (var name in names) {
-        if (customers_.ContainsKey(name)) {
-          Telecom.Log($"Customer {name} already present");
-          continue;
-        }
-        Telecom.Log($"Adding customer {name}");
-        customers_.Add(name, new Customer(GetCustomerDefinition(name), this));
-      }
-    }
     public void AddConnections(IEnumerable<string> names) {
       foreach (var name in names) {
         if (connections_.ContainsKey(name)) {
@@ -153,35 +116,6 @@ namespace σκοπός {
         Telecom.Log($"Adding connection {name}");
         connections_.Add(name, Connections.New(GetConnectionDefinition(name)));
       }
-    }
-
-    public void RemoveStations(IEnumerable<string> names) { }
-    public void RemoveCustomers(IEnumerable<string> names) { }
-    public void RemoveConnections(IEnumerable<string> names) { }
-
-    public void AddNominalLocation(Vessel v) {
-      // TODO(egg): maybe this could be body-dependent.
-      nominal_satellite_locations_.Add(
-        UnityEngine.QuaternionD.Inverse(FlightGlobals.GetHomeBody().scaledBody.transform.rotation) *
-          (v.GetWorldPos3D() - FlightGlobals.GetHomeBody().position));
-      must_retarget_customers_ = true;
-    }
-
-    public Vector3d[] GetNominalLocationLatLonAlts() {
-      var result = new List<Vector3d>(nominal_satellite_locations_.Count);
-      foreach (var position in nominal_satellite_locations_) {
-        FlightGlobals.GetHomeBody().GetLatLonAlt(
-          FlightGlobals.GetHomeBody().scaledBody.transform.rotation * position +
-          FlightGlobals.GetHomeBody().position,
-          out double lat, out double lon, out double alt);
-        result.Add(new Vector3d(lat, lon, alt));
-      }
-      return result.ToArray();
-    }
-
-    public void ClearNominalLocations() {
-      nominal_satellite_locations_.Clear();
-      must_retarget_customers_ = true;
     }
 
     private void OnUpdateGroundStationVisible(
@@ -239,19 +173,7 @@ namespace σκοπός {
           Telecom.Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
         }
       }
-      //CreateGroundSegmentNodesIfNeeded();
-      foreach (var customer in customers_.Values) {
-        customer.Cycle();
-      }
-      if (customers_.Values.Any(customer => customer.station == null)) {
-        return;
-      }
-      if (must_retarget_customers_) {
-        foreach (var customer in customers_.Values) {
-          customer.Retarget();
-        }
-        must_retarget_customers_ = false;
-      }
+
       UpdateConnections();
       foreach (RealAntennaDigital antenna in routing_.usage.Transmitters()) {
         if ((antenna?.ParentNode as RACommNode).ParentVessel is Vessel vessel) {
@@ -264,55 +186,6 @@ namespace σκοπός {
               "Σκοπός telecom");
         }
       }
-    }
-
-    private void CreateGroundSegmentNodesIfNeeded() {
-      // TODO(egg): Rewrite taking mutability into account.
-      if (ground_segment_nodes_ == null && MapView.fetch != null) {
-        ground_segment_nodes_ = new List<SiteNode>();
-        foreach (var station in stations_.Values) {
-          ground_segment_nodes_.Add(MakeSiteNode(station));
-        }
-      }
-    }
-
-    private static SiteNode MakeSiteNode(RACommNetHome station) {
-      SiteNode site_node = SiteNode.Spawn(new GroundStationSiteNode(station.Comm));
-      UnityEngine.Texture2D stationTexture = GameDatabase.Instance.GetTexture(station.icon, false);
-      site_node.wayPoint.node.SetIcon(UnityEngine.Sprite.Create(
-        stationTexture,
-        new UnityEngine.Rect(0, 0, stationTexture.width, stationTexture.height),
-        new UnityEngine.Vector2(0.5f, 0.5f),
-        100f));
-      site_node.wayPoint.node.OnUpdateVisible += station.OnUpdateVisible;
-      return site_node;
-    }
-
-    private ConfigNode MakeTargetConfig(CelestialBody body, Vector3d station_world_position) {
-      var config = new ConfigNode(AntennaTarget.nodeName);
-      if (nominal_satellite_locations_.Count == 0) {
-        return config;
-      }
-      Vector3d station_position =
-          UnityEngine.QuaternionD.Inverse(body.scaledBody.transform.rotation) *
-            (station_world_position - body.position);
-      Vector3d station_zenith = station_position.normalized;
-      Vector3d target = default;
-      double max_cos_zenithal_angle = double.NegativeInfinity;
-      foreach (var position in nominal_satellite_locations_) {
-        double cos_zenithal_angle = Vector3d.Dot(station_zenith, position - station_position);
-        if (cos_zenithal_angle > max_cos_zenithal_angle) {
-          max_cos_zenithal_angle = cos_zenithal_angle;
-          target = position;
-        }
-      }
-      body.GetLatLonAlt(
-        body.scaledBody.transform.rotation * target + body.position,
-        out double lat, out double lon, out double alt);
-      config.AddValue("name", $"{AntennaTarget.TargetMode.BodyLatLonAlt}");
-      config.AddValue("bodyName", Planetarium.fetch.Home.name);
-      config.AddValue("latLonAlt", new Vector3d(lat, lon, alt));
-      return config;
     }
 
     private void UpdateConnections() {
@@ -350,107 +223,6 @@ namespace σκοπός {
       }
     }
 
-    private class Customer {
-      public Customer(ConfigNode template, Network network) {
-        template_ = template;
-        network_ = network;
-        body_ = GetConfiguredBody(template_);
-      }
-
-      public void Cycle() {
-        if (network_.freeze_customers_) {
-          return;
-        }
-        if (imminent_station_ != null) {
-          DestroyStation();
-          station = imminent_station_;
-          imminent_station_ = null;
-        }
-        if (imminent_station_ == null && upcoming_station_?.Comm != null) {
-          imminent_station_ = upcoming_station_;
-          upcoming_station_ = null;
-          (RACommNetScenario.Instance as RACommNetScenario)?.Network?.InvalidateCache();
-        }
-        if (upcoming_station_ == null) {
-          upcoming_station_ = MakeStation();
-        }
-      }
-      public void Retarget() {
-        var antenna = station.Comm.RAAntennaList[0];
-        antenna.Target = AntennaTarget.LoadFromConfig(network_.MakeTargetConfig(body_, station.Comm.precisePosition), antenna);
-      }
-
-      private RACommNetHome MakeStation() {
-        HashSet<string> biomes = template_.GetValues("biome").ToHashSet();
-        const double degree = Math.PI / 180;
-        double lat;
-        double lon;
-        int i = 0;
-        do {
-          ++i;
-          double sin_lat_min =
-            Math.Sin(double.Parse(template_.GetValue("lat_min")) * degree);
-          double sin_lat_max =
-            Math.Sin(double.Parse(template_.GetValue("lat_max")) * degree);
-          double lon_min = double.Parse(template_.GetValue("lon_min")) * degree;
-          double lon_max = double.Parse(template_.GetValue("lon_max")) * degree;
-          lat = Math.Asin(sin_lat_min + network_.random_.NextDouble() * (sin_lat_max - sin_lat_min));
-          lon = lon_min + network_.random_.NextDouble() * (lon_max - lon_min);
-        } while (!biomes.Contains(body_.BiomeMap.GetAtt(lat, lon).name));
-        var new_station =
-          new UnityEngine.GameObject(body_.name).AddComponent<RACommNetHome>();
-        var node = new ConfigNode();
-        node.AddValue("objectName", $"{template_.GetValue("name")} @{lat / degree:F2}, {lon / degree:F2} ({i} tries)");
-        node.AddValue("lat", lat / degree);
-        node.AddValue("lon", lon / degree);
-        double alt = body_.TerrainAltitude(lat / degree, lon / degree) + 10;
-        node.AddValue("alt", alt);
-        node.AddValue("isKSC", false);
-        node.AddValue("isHome", false);
-        node.AddValue("icon", "RealAntennas/DSN");
-        Vector3d station_position = body_.GetWorldSurfacePosition(lat, lon, alt);
-        foreach (var antenna in template_.GetNodes("Antenna")) {
-          var targeted_antenna = antenna.CreateCopy();
-          if (!targeted_antenna.HasNode(AntennaTarget.nodeName)) {
-            targeted_antenna.AddNode(network_.MakeTargetConfig(body_, station_position));
-          }
-          node.AddNode(targeted_antenna);
-        }
-        new_station.Configure(node, body_);
-        if (template_.GetValue("role") == "tx") {
-          network_.tx_only_.Add(new_station);
-        } else if (template_.GetValue("role") == "rx") {
-          network_.rx_only_.Add(new_station);
-        }
-        return new_station;
-      }
-
-      private void DestroyStation() {
-        if (station == null) {
-          return;
-        }
-        network_.tx_only_.Remove(station);
-        network_.rx_only_.Remove(station);
-        CommNet.CommNetNetwork.Instance.CommNet.Remove(station.Comm);
-        if (node_ != null) {
-          FinePrint.WaypointManager.RemoveWaypoint(node_.wayPoint);
-          UnityEngine.Object.Destroy(node_.gameObject);
-        }
-        UnityEngine.Object.Destroy(station);
-        station = null;
-        node_ = null;
-      }
-
-      private RACommNetHome upcoming_station_;
-      private RACommNetHome imminent_station_;
-      public RACommNetHome station { get; private set; }
-      private SiteNode node_;
-
-      private ConfigNode template_;
-      private CelestialBody body_;
-      private Network network_;
-    }
-
     public IEnumerable<Connection> connections => connections_.Values;
 
     public Connection GetConnection(string name) {
@@ -467,27 +239,19 @@ namespace σκοπός {
     }
 
     public IEnumerable<RACommNetHome> AllGround() {
-      return stations_.Values.Concat(
-          from customer in customers_.Values select customer.station);
+      return stations_.Values;
     }
 
     public int customer_pool_size { get; set; }
     public bool hide_off_network { get; set; }
 
-    private readonly SortedDictionary<string, Customer> customers_ =
-        new SortedDictionary<string, Customer>();
     private readonly SortedDictionary<string, RACommNetHome> stations_ =
         new SortedDictionary<string, RACommNetHome>();
     private readonly SortedDictionary<string, Connection> connections_ =
         new SortedDictionary<string, Connection>();
-    private List<SiteNode> ground_segment_nodes_;
     public readonly HashSet<RACommNetHome> tx_only_ = new HashSet<RACommNetHome>();
     public readonly HashSet<RACommNetHome> rx_only_ = new HashSet<RACommNetHome>();
-    private readonly List<Vector3d> nominal_satellite_locations_ = new List<Vector3d>();
-    bool must_retarget_customers_ = false;
-    private readonly Random random_ = new Random();
     public string[] names_ = { };
-    public bool freeze_customers_;
     public Routing routing_ = new Routing();
 
     public Dictionary<Contracts.Contract, List<Connection>> connections_by_contract  { get; } =
