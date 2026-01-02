@@ -1,8 +1,6 @@
 ﻿using RealAntennas;
 using RealAntennas.MapUI;
 using RealAntennas.Network;
-using RealAntennas.Targeting;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -46,6 +44,7 @@ namespace σκοπός {
       foreach (ConfigNode node in connection_nodes) {
         connections_[node.GetValue("name")].Load(node);
       }
+      ReloadContractConnections();
     }
 
     public void Serialize(ConfigNode node) {
@@ -68,7 +67,7 @@ namespace σκοπός {
           continue;
         }
         Telecom.Log($"Adding station {name}");
-        stations_.Add(name, null);
+        stations_.Add(name, MakeStation(name));
       }
     }
 
@@ -98,6 +97,11 @@ namespace σκοπός {
         station_node.AddNode(antenna);
       }
       station.Configure(station_node, body);
+      if (RACommNetScenario.GroundStations.TryGetValue(station.nodeName, out RACommNetHome oldStation)) { 
+        RACommNetScenario.GroundStations.Remove(station.nodeName);
+        UnityEngine.Object.Destroy(oldStation);
+      }
+      RACommNetScenario.GroundStations.Add(station.nodeName, station);
 
       if (node.GetValue("role") == "tx") {
         tx_only_.Add(station);
@@ -128,28 +132,16 @@ namespace σκοπός {
       iconData.visible &= !hide_off_network;
     }
 
-    public void Refresh() {
-      bool all_stations_good = true;;
-      var station_names = stations_.Keys.ToArray();
-      foreach (var name in station_names) {
-        if (stations_[name] == null) {
-          Telecom.Log($"Making station {name}");
-          stations_[name] = MakeStation(name);
-        }
-        if (stations_[name].Comm == null) {
-          Telecom.Log($"null Comm for {name}");
-          all_stations_good = false;
-        }
-        string node_name = stations_[name].nodeName;
-        if (!RACommNetScenario.GroundStations.ContainsKey(node_name)) {
-          Telecom.Log($"{name} not in GroundStations at {node_name}");
-          RACommNetScenario.GroundStations.Add(node_name, stations_[name]);
-        } else if (RACommNetScenario.GroundStations[node_name] != stations_[name]) {
-          Telecom.Log($"{name} is not GroundStations[{node_name}]");
-          UnityEngine.Object.DestroyImmediate(RACommNetScenario.GroundStations[node_name]);
-          RACommNetScenario.GroundStations[node_name] = stations_[name];
+    private void StationSanityChecker() { 
+      foreach (var pair in stations_) {
+        var station = pair.Value;
+        if (station.Comm.RAAntennaList.Count == 0) {
+          Telecom.Log($"No antenna for {pair.Key}; Ground TL is {RACommNetScenario.GroundStationTechLevel}");
         }
       }
+    }
+
+    internal void UpdateStationVisibilityHandler() { 
       if (RACommNetUI.Instance is RACommNetUI ui) {
         foreach (var site in ui.groundStationSiteNodes) {
           var station_comm = ((GroundStationSiteNode)site.siteObject).node;
@@ -163,16 +155,9 @@ namespace σκοπός {
           }
         }
       }
-      if (!all_stations_good) {
-        return;
-      }
-      foreach (var pair in stations_) {
-        var station = pair.Value;
-        if (station.Comm.RAAntennaList.Count == 0) {
-          Telecom.Log($"No antenna for {pair.Key}");
-          Telecom.Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
-        }
-      }
+    }
+
+    public void Refresh() {
 
       UpdateConnections();
       foreach (RealAntennaDigital antenna in routing_.usage.Transmitters()) {
@@ -198,24 +183,6 @@ namespace σκοπός {
           from station in tx_only_ select station.Comm,
           from station in rx_only_ select station.Comm,
           from station in stations_.Values select station.Comm);
-      connections_by_contract.Clear();
-      contracted_connections.Clear();
-      foreach (var contract in Contracts.ContractSystem.Instance.Contracts) {
-        if (contract.ContractState == Contracts.Contract.State.Active) {
-          List<Connection> contract_connections = null;
-          foreach (var parameter in contract.AllParameters) {
-            if (parameter is ConnectionAvailability connection) {
-              if (contract_connections == null &&
-                  !connections_by_contract.TryGetValue(contract, out contract_connections)) {
-                contract_connections = new List<Connection>();
-                connections_by_contract.Add(contract, contract_connections);
-              }
-              contracted_connections.Add(GetConnection(connection.connection_name));
-              contract_connections.Add(GetConnection(connection.connection_name));
-            }
-          }
-        }
-      }
       foreach (var connection in connections_.Values) {
         if (contracted_connections.Contains(connection)) {
           connection.AttemptConnection(routing_, this, Telecom.Instance.last_universal_time);
@@ -223,6 +190,22 @@ namespace σκοπός {
       }
     }
 
+    internal void ReloadContractConnections() {
+      connections_by_contract.Clear();
+      contracted_connections.Clear();
+      foreach (var contract in Contracts.ContractSystem.Instance.Contracts.Where(c => c.ContractState == Contracts.Contract.State.Active)) {
+        List<Connection> contract_connections = null;
+        foreach (ConnectionAvailability connection in contract.AllParameters.Where(p => p is ConnectionAvailability)) {
+          if (contract_connections == null &&
+              !connections_by_contract.TryGetValue(contract, out contract_connections)) {
+            contract_connections = new List<Connection>();
+            connections_by_contract.Add(contract, contract_connections);
+          }
+          contracted_connections.Add(GetConnection(connection.connection_name));
+          contract_connections.Add(GetConnection(connection.connection_name));
+        }
+      }
+    }
     public IEnumerable<Connection> connections => connections_.Values;
 
     public Connection GetConnection(string name) {
