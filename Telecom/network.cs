@@ -45,6 +45,7 @@ namespace σκοπός {
         connections_[node.GetValue("name")].Load(node);
       }
       ReloadContractConnections();
+      (CommNet.CommNetScenario.Instance as RACommNetScenario).Network.InvalidateCache();    // Inform RA of changes to the node list.
     }
 
     public void Serialize(ConfigNode node) {
@@ -205,6 +206,7 @@ namespace σκοπός {
           contract_connections.Add(GetConnection(connection.connection_name));
         }
       }
+      (CommNet.CommNetScenario.Instance as RACommNetScenario).Network.InvalidateCache();    // Inform RA of changes to the node list.
     }
     public IEnumerable<Connection> connections => connections_.Values;
 

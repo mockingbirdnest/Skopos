@@ -31,13 +31,13 @@ namespace σκοπός {
     }
 
     public override void OnLoad(ConfigNode node) {
-      config = node.GetNode("network") ?? new ConfigNode();
+      serialized_network_ = node.GetNode("network") ?? new ConfigNode();
     }
 
     public override void OnSave(ConfigNode node) {
       base.OnSave(node);
       if (network == null) {
-        node.AddNode("network", config);
+        node.AddNode("network", serialized_network_);
       } else {
         network.Serialize(node.AddNode("network"));
       }
@@ -66,8 +66,7 @@ namespace σκοπός {
           yield return new UnityEngine.WaitForFixedUpdate();
       }
       Log("Creating Network");
-      network = new Network(config);
-      (CommNet.CommNetScenario.Instance as RACommNetScenario).Network.InvalidateCache();    // Inform RA of changes to the node list.
+      network = new Network(serialized_network_);
       enabled = true;
       GameEvents.Contract.onAccepted.Add(OnContractsChanged);
       GameEvents.Contract.onFinished.Add(OnContractsChanged);
@@ -80,15 +79,14 @@ namespace σκοπός {
     private bool on_contracts_changed_cr_running = false;
     internal void OnContractsChanged(Contracts.Contract data) {
       if (!on_contracts_changed_cr_running) {
-        StartCoroutine(OnContractsChangedCR(data));
+        StartCoroutine(DelayedContractReload(data));
       }
     }
 
-    private IEnumerator OnContractsChangedCR(Contracts.Contract data) {
+    private IEnumerator DelayedContractReload(Contracts.Contract data) {
       on_contracts_changed_cr_running = true;
       yield return new UnityEngine.WaitForEndOfFrame();
       network.ReloadContractConnections();
-      (CommNet.CommNetScenario.Instance as RACommNetScenario).Network.InvalidateCache();    // Inform RA of changes to the node list.
       on_contracts_changed_cr_running = false;
     }
 
@@ -200,7 +198,7 @@ namespace σκοπός {
     public static Telecom Instance { get; private set; }
 
     public Network network { get; private set; }
-    private ConfigNode config;
+    private ConfigNode serialized_network_;
     [KSPField(isPersistant = true)]
     internal MainWindow main_window_;
     public double last_universal_time => ut_;
