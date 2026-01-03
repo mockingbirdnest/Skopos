@@ -15,6 +15,10 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
   protected override string Title => "Σκοπός Telecom network overview";
 
   protected override void RenderWindowContents(int window_id) {
+    if (!telecom_.enabled || telecom_.network == null) {
+      UnityEngine.GUILayout.Label("Please wait for the Σκοπός Telecom network to initialize...");
+      return;
+    }
     using (new UnityEngine.GUILayout.VerticalScope()) {
       show_network = UnityEngine.GUILayout.Toggle(show_network, "Show network");
       var inspected_connections = connection_inspectors_.Keys.ToArray();

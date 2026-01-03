@@ -5,6 +5,7 @@ using RealAntennas;
 using RealAntennas.MapUI;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Collections;
 
 namespace σκοπός {
   [KSPScenario(
@@ -23,25 +24,74 @@ namespace σκοπός {
       UnityEngine.Debug.Log($"[Σκοπός Telecom]: {message} ({file}:{line})");
     }
 
-    public Telecom() {
-      Log("Constructor");
+    public override void OnAwake() {
+      Log($"Scenario Module OnAwake in {HighLogic.LoadedScene}.");
       Instance = this;
       main_window_ = new MainWindow(this);
     }
 
     public override void OnLoad(ConfigNode node) {
-      Log("OnLoad");
-      base.OnLoad(node);
-      network = new Network(node.GetNode("network"));
+      serialized_network_ = node.GetNode("network") ?? new ConfigNode();
     }
 
     public override void OnSave(ConfigNode node) {
-      Log("OnSave");
       base.OnSave(node);
-      network.Serialize(node.AddNode("network"));
+      if (network == null) {
+        node.AddNode("network", serialized_network_);
+      } else {
+        network.Serialize(node.AddNode("network"));
+      }
+    }
+
+    public void Start() {
+      Log("Starting");
+      enabled = false;
+      GameEvents.CommNet.OnNetworkInitialized.Add(NetworkInitializedNotify);
+      StartCoroutine(CreateNetwork());
+    }
+
+    public void OnDestroy() {
+      Log("Destroying");
+      GameEvents.CommNet.OnNetworkInitialized.Remove(NetworkInitializedNotify);
+      GameEvents.Contract.onAccepted.Remove(OnContractsChanged);
+      GameEvents.Contract.onFinished.Remove(OnContractsChanged);    
+    }
+
+    private void NetworkInitializedNotify() {
+      Log("CommNet Network Initialization fired.");
+    }
+
+    private IEnumerator CreateNetwork() {
+      while (RACommNetScenario.RACN == null || !CommNet.CommNetNetwork.Initialized) {
+          yield return new UnityEngine.WaitForFixedUpdate();
+      }
+      Log("Creating Network");
+      network = new Network(serialized_network_);
+      enabled = true;
+      GameEvents.Contract.onAccepted.Add(OnContractsChanged);
+      GameEvents.Contract.onFinished.Add(OnContractsChanged);
+      while (network.AllGround().Any(x => x.Comm == null)) {
+        yield return new UnityEngine.WaitForEndOfFrame();
+      }
+      network.UpdateStationVisibilityHandler();
+    }
+
+    private bool on_contracts_changed_cr_running = false;
+    internal void OnContractsChanged(Contracts.Contract data) {
+      if (!on_contracts_changed_cr_running) {
+        StartCoroutine(DelayedContractReload(data));
+      }
+    }
+
+    private IEnumerator DelayedContractReload(Contracts.Contract data) {
+      on_contracts_changed_cr_running = true;
+      yield return new UnityEngine.WaitForEndOfFrame();
+      network.ReloadContractConnections();
+      on_contracts_changed_cr_running = false;
     }
 
     private void OnGUI() {
+      if (!enabled) return;
       if (KSP.UI.Screens.ApplicationLauncher.Ready && toolbar_button_ == null) {
         LoadTextureIfExists(out UnityEngine.Texture toolbar_button_texture,
                             "skopos_telecom.png");
@@ -148,6 +198,7 @@ namespace σκοπός {
     public static Telecom Instance { get; private set; }
 
     public Network network { get; private set; }
+    private ConfigNode serialized_network_;
     [KSPField(isPersistant = true)]
     internal MainWindow main_window_;
     public double last_universal_time => ut_;
