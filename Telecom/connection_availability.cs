@@ -138,6 +138,9 @@ namespace σκοπός {
 
     protected override void OnUpdate() {
       base.OnUpdate();
+      if (goal_ == Goal.MAINTAIN) {
+        monitor?.AlertIfNeeded();
+      }
       if (subparameters != null) {
         bool any_failed = false;
         bool any_incomplete = false;
@@ -244,9 +247,6 @@ namespace σκοπός {
             $"{pretty_latency}.\n{status}, {monitor.description}.\n" +
             $"Availability: {metric.description}\nTarget: {availability_:P2}";
         
-      }
-      if (goal_ == Goal.MAINTAIN) {
-        monitor?.AlertIfNeeded();
       }
       title_tracker_.Add(title);
       if (last_title_ != title) {
