@@ -204,6 +204,10 @@ namespace σκοπός {
     public double last_universal_time => ut_;
     [KSPField(isPersistant = true)]
     private double ut_;
+    [KSPField(isPersistant = true)]
+    internal double max_alert_rate_in_days_ = 0;
+    [KSPField(isPersistant = true)]
+    public bool stop_warp_in_sim_ = true;
     private KSP.UI.Screens.ApplicationLauncherButton toolbar_button_;
   }
 }
