@@ -47,14 +47,20 @@ namespace σκοπός {
       Log("Starting");
       enabled = false;
       GameEvents.CommNet.OnNetworkInitialized.Add(NetworkInitializedNotify);
+      GameEvents.Contract.onContractsLoaded.Add(NotifyContractsLoaded);
       StartCoroutine(CreateNetwork());
     }
 
     public void OnDestroy() {
       Log("Destroying");
       GameEvents.CommNet.OnNetworkInitialized.Remove(NetworkInitializedNotify);
-      GameEvents.Contract.onAccepted.Remove(OnContractsChanged);
-      GameEvents.Contract.onFinished.Remove(OnContractsChanged);    
+      GameEvents.Contract.onAccepted.Remove(ReloadContractConnections);
+      GameEvents.Contract.onFinished.Remove(ReloadContractConnections);    
+      GameEvents.Contract.onContractsLoaded.Remove(NotifyContractsLoaded);
+    }
+
+    private void NotifyContractsLoaded() {
+      Log("Received OnContractsLoaded GameEvent notification");
     }
 
     private void NetworkInitializedNotify() {
@@ -68,16 +74,17 @@ namespace σκοπός {
       Log("Creating Network");
       network = new Network(serialized_network_);
       enabled = true;
-      GameEvents.Contract.onAccepted.Add(OnContractsChanged);
-      GameEvents.Contract.onFinished.Add(OnContractsChanged);
+      GameEvents.Contract.onAccepted.Add(ReloadContractConnections);
+      GameEvents.Contract.onFinished.Add(ReloadContractConnections);
       while (network.AllGround().Any(x => x.Comm == null)) {
+        Log("Network creation stalling for station CommNetHomes to create...");
         yield return new UnityEngine.WaitForEndOfFrame();
       }
       network.UpdateStationVisibilityHandler();
     }
 
     private bool on_contracts_changed_cr_running = false;
-    internal void OnContractsChanged(Contracts.Contract data) {
+    internal void ReloadContractConnections(Contracts.Contract data) {
       if (!on_contracts_changed_cr_running) {
         StartCoroutine(DelayedContractReload(data));
       }
@@ -85,7 +92,10 @@ namespace σκοπός {
 
     private IEnumerator DelayedContractReload(Contracts.Contract data) {
       on_contracts_changed_cr_running = true;
-      yield return new UnityEngine.WaitForEndOfFrame();
+      yield return new UnityEngine.WaitForFixedUpdate();
+      while (!Contracts.ContractSystem.loaded) {
+        yield return new UnityEngine.WaitForEndOfFrame();
+      }
       network.ReloadContractConnections();
       on_contracts_changed_cr_running = false;
     }

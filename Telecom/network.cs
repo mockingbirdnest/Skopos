@@ -44,7 +44,7 @@ namespace σκοπός {
       foreach (ConfigNode node in connection_nodes) {
         connections_[node.GetValue("name")].Load(node);
       }
-      ReloadContractConnections();
+      Telecom.Instance.ReloadContractConnections(null);
       (CommNet.CommNetScenario.Instance as RACommNetScenario).Network.InvalidateCache();    // Inform RA of changes to the node list.
     }
 
@@ -92,13 +92,14 @@ namespace σκοπός {
       station_node.AddValue("isKSC", false);
       station_node.AddValue("isHome", false);
       station_node.AddValue("icon", "RealAntennas/radio-antenna");
+      Telecom.Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
       foreach (var antenna in node.GetNodes("Antenna")) {
         Telecom.Log($"antenna for {name}: {antenna}");
-        Telecom.Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
         station_node.AddNode(antenna);
       }
       station.Configure(station_node, body);
       if (RACommNetScenario.GroundStations.TryGetValue(station.nodeName, out RACommNetHome oldStation)) { 
+        Telecom.Log($"Ground station {station.nodeName} was already registered in RA, deleting the old instance");
         RACommNetScenario.GroundStations.Remove(station.nodeName);
         UnityEngine.Object.Destroy(oldStation);
       }
