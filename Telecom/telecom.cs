@@ -220,5 +220,7 @@ namespace σκοπός {
     [KSPField(isPersistant = true)]
     public bool stop_warp_in_sim_ = true;
     private KSP.UI.Screens.ApplicationLauncherButton toolbar_button_;
+
+    internal RuntimeMetrics runtimeMetrics_ = new RuntimeMetrics();
   }
 }
