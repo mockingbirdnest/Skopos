@@ -44,7 +44,6 @@ namespace σκοπός {
       foreach (ConfigNode node in connection_nodes) {
         connections_[node.GetValue("name")].Load(node);
       }
-      Telecom.Instance.ReloadContractConnections(null);
       (CommNet.CommNetScenario.Instance as RACommNetScenario).Network.InvalidateCache();    // Inform RA of changes to the node list.
     }
 

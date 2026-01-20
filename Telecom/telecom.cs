@@ -73,6 +73,7 @@ namespace σκοπός {
       }
       Log("Creating Network");
       network = new Network(serialized_network_);
+      ReloadContractConnections(null);
       enabled = true;
       GameEvents.Contract.onAccepted.Add(ReloadContractConnections);
       GameEvents.Contract.onFinished.Add(ReloadContractConnections);
@@ -93,7 +94,7 @@ namespace σκοπός {
     private IEnumerator DelayedContractReload(Contracts.Contract data) {
       on_contracts_changed_cr_running = true;
       yield return new UnityEngine.WaitForFixedUpdate();
-      while (!Contracts.ContractSystem.loaded) {
+      while (!Contracts.ContractSystem.loaded && network != null) {
         yield return new UnityEngine.WaitForEndOfFrame();
       }
       network.ReloadContractConnections();
