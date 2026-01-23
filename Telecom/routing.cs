@@ -133,6 +133,7 @@ namespace σκοπός {
   public void Reset(IEnumerable<RACommNode> tx_only,
                     IEnumerable<RACommNode> rx_only,
                     IEnumerable<RACommNode> multiple_tracking_tx) {
+    OrientedLink.ReturnLinks(this);
     links_.Clear();
     current_network_usage_.Clear();
 
@@ -479,6 +480,14 @@ namespace σκοπός {
   }
 
   public class OrientedLink {
+    private static readonly Queue<OrientedLink> pool = new Queue<OrientedLink>();
+    private static OrientedLink GetFromPool() => pool.Count > 0 ? pool.Dequeue() : new OrientedLink();
+    internal static void ReturnLinks(Routing r) {
+      foreach (var link in r.links_.Values) {
+        link.Clear();
+        pool.Enqueue(link);
+      }
+    }
     public static OrientedLink Get(
         Routing routing,
         RACommNode from,
@@ -486,7 +495,8 @@ namespace σκοπός {
       if (!routing.links_.TryGetValue((from, to), out OrientedLink link)) {
         var ra_link = (RACommLink)from[to];
         bool forward = ra_link.a == from;
-        link = new OrientedLink(from, to, ra_link, forward, routing);
+        link = GetFromPool();
+        link.Set(from, to, ra_link, forward, routing);
         routing.links_.Add((from, to), link);
       }
       return link;
@@ -496,10 +506,10 @@ namespace σκοπός {
       return new SourcedLink(null, null, this);
     }
 
-    public readonly RACommNode tx;
-    public readonly RACommNode rx;
-    public readonly RACommLink ra_link;
-    public readonly bool forward;
+    public RACommNode tx { get; private set; }
+    public RACommNode rx { get; private set; }
+    public RACommLink ra_link { get; private set; }
+    public bool forward { get; private set; }
 
     public RealAntennaDigital tx_antenna =>
         (RealAntennaDigital)(forward ? ra_link.FwdAntennaTx
@@ -543,11 +553,17 @@ namespace σκοπός {
       return data_rate / (encoder.CodingRate * modulator.ModulationBits);
     }
 
+    private OrientedLink() { }
     private OrientedLink(RACommNode tx,
                          RACommNode rx,
                          RACommLink ra_link,
                          bool forward,
                          Routing routing) {
+      Set(tx, rx, ra_link, forward, routing);
+    }
+
+    private void Clear() => Set(null, null, null, true, null);
+    private void Set(RACommNode tx, RACommNode rx, RACommLink ra_link, bool forward, Routing routing) {
       this.tx = tx;
       this.rx = rx;
       this.ra_link = ra_link;
@@ -559,7 +575,7 @@ namespace σκοπός {
     private double bits_per_symbol =>
         encoder.CodingRate * modulator.ModulationBits;
 
-    private readonly Routing routing_;
+    private Routing routing_;
   }
 
   private readonly RoutingNetworkUsage current_network_usage_;
