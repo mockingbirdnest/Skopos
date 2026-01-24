@@ -265,21 +265,17 @@ namespace σκοπός {
     // TODO(egg): consider using the stock intrusive data structure.
     var distances = new Dictionary<RACommNode, double>();
     var previous = new Dictionary<RACommNode, OrientedLink>();
-    var boundary = new SortedDictionary<double, RACommNode>();
+    var boundary = new PriorityQueue<RACommNode, double>();
     var interior = new HashSet<RACommNode>();
 
     distances[source] = 0;
-    boundary[0] = source;
+    boundary.Enqueue(source, 0);
     previous[source] = null;
     int rx_found = 0;
     channels = new Channel[destinations.Count()];
     bool is_point_to_multipoint = destinations.Count() > 1;
 
-    while (boundary.Count > 0) {
-      double tx_distance = boundary.First().Key;
-      RACommNode tx = boundary.First().Value;
-      boundary.Remove(tx_distance);
-
+    while (boundary.TryDequeue(out RACommNode tx, out double tx_distance)) {
       if (tx_distance > latency_limit * c) {
         // We have run out of latency, no need to keep searching.
         return rx_found == 0 ? Unavailable : Partial;
@@ -287,8 +283,8 @@ namespace σκοπός {
         int i = destinations.IndexOf(tx);
         channels[i] = new Channel();
         for (OrientedLink link = previous[tx];
-            link != null;
-            link = previous[link.tx]) {
+             link != null;
+             link = previous[link.tx]) {
            channels[i].links.Add(link);
         }
         channels[i].links.Reverse();
@@ -319,18 +315,12 @@ namespace σκοπός {
         }
 
         double tentative_distance = tx_distance + link.length;
-        if (distances.TryGetValue(rx, out double d)) {
-          if (d <= tentative_distance) {
-            continue;
-          } else {
-            boundary.Remove(d);
-          }
+        if (!distances.TryGetValue(rx, out double d) ||
+            tentative_distance < d) {
+          distances[rx] = tentative_distance;
+          previous[rx] = link;
+          boundary.Enqueue(rx, tentative_distance);
         }
-
-        distances[rx] = tentative_distance;
-        // NOTE(egg): this will fail if we have equidistant nodes.
-        boundary.Add(tentative_distance, rx);
-        previous[rx] = link;
       }
     }
     return rx_found == 0 ? Unavailable : Partial;

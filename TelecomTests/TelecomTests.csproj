@@ -64,6 +64,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="priority_queue_test.cs" />
     <Compile Include="routing_test.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
