@@ -19,8 +19,28 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
       UnityEngine.GUILayout.Label("Please wait for the Σκοπός Telecom network to initialize...");
       return;
     }
+    if (string.IsNullOrEmpty(alert_rate_limit_text)) {
+      alert_rate_limit_text = telecom_.max_alert_rate_in_days_.ToString();
+    }   // MainWindow initialization is before this field was loaded by the scenario.
+
     using (new UnityEngine.GUILayout.VerticalScope()) {
-      show_network = UnityEngine.GUILayout.Toggle(show_network, "Show network");
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
+        show_network = UnityEngine.GUILayout.Toggle(show_network, "Show network");
+        telecom_.stop_warp_in_sim_ = UnityEngine.GUILayout.Toggle(telecom_.stop_warp_in_sim_, "Alerts stop warp in RP-1 sim");
+      }
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
+        UnityEngine.GUILayout.Label("Suppress duplicate SLA alerts within");
+        alert_rate_limit_text = UnityEngine.GUILayout.TextField(alert_rate_limit_text);
+        double.TryParse(alert_rate_limit_text, out telecom_.max_alert_rate_in_days_);
+        UnityEngine.GUILayout.Label($"days ({telecom_.max_alert_rate_in_days_})");
+      }
+
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
+        UnityEngine.GUILayout.Label($"Contracted connections: {telecom_.network.contracted_connections.Count}");
+        UnityEngine.GUILayout.Label($"Fixed Updates: {telecom_.runtimeMetrics_.num_fixed_update_iterations_}");
+        UnityEngine.GUILayout.Label($"Average Runtime: {telecom_.runtimeMetrics_.AverageFixedUpdateRuntime:F2} ms");
+      }
+
       var inspected_connections = connection_inspectors_.Keys.ToArray();
       foreach (var inspected_connection in inspected_connections) {
         if (!telecom_.network.contracted_connections.Contains(inspected_connection)) {
@@ -114,6 +134,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
     antenna_inspectors_;
 
   private Telecom telecom_;
+  private string alert_rate_limit_text;
   private readonly Dictionary<Contracts.Contract, bool> open_contracts_ =
       new Dictionary<Contracts.Contract, bool>();
   private readonly Dictionary<Connection, ConnectionInspector> connection_inspectors_ =

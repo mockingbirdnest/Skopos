@@ -44,7 +44,6 @@ namespace σκοπός {
       foreach (ConfigNode node in connection_nodes) {
         connections_[node.GetValue("name")].Load(node);
       }
-      ReloadContractConnections();
       (CommNet.CommNetScenario.Instance as RACommNetScenario).Network.InvalidateCache();    // Inform RA of changes to the node list.
     }
 
@@ -92,13 +91,14 @@ namespace σκοπός {
       station_node.AddValue("isKSC", false);
       station_node.AddValue("isHome", false);
       station_node.AddValue("icon", "RealAntennas/radio-antenna");
+      Telecom.Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
       foreach (var antenna in node.GetNodes("Antenna")) {
         Telecom.Log($"antenna for {name}: {antenna}");
-        Telecom.Log($"Ground TL is {RACommNetScenario.GroundStationTechLevel}");
         station_node.AddNode(antenna);
       }
       station.Configure(station_node, body);
       if (RACommNetScenario.GroundStations.TryGetValue(station.nodeName, out RACommNetHome oldStation)) { 
+        Telecom.Log($"Ground station {station.nodeName} was already registered in RA, deleting the old instance");
         RACommNetScenario.GroundStations.Remove(station.nodeName);
         UnityEngine.Object.Destroy(oldStation);
       }
@@ -158,8 +158,11 @@ namespace σκοπός {
       }
     }
 
+    private System.Diagnostics.Stopwatch refresh_watch_ = new System.Diagnostics.Stopwatch();
     public void Refresh() {
-
+      UnityEngine.Profiling.Profiler.BeginSample("Skopos.Network.FixedUpdate");
+      var metrics = Telecom.Instance.runtimeMetrics_;
+      refresh_watch_.Start();
       UpdateConnections();
       foreach (RealAntennaDigital antenna in routing_.usage.Transmitters()) {
         if ((antenna?.ParentNode as RACommNode).ParentVessel is Vessel vessel) {
@@ -167,11 +170,14 @@ namespace σκοπός {
               vessel,
               "ElectricCharge",
               // PowerDrawLinear is in mW, ElectricCharge is in kJ.
-              routing_.usage.TxPowerUsage(antenna) * antenna.PowerDrawLinear *
-              1e-6 * TimeWarp.fixedDeltaTime,
+              routing_.usage.TxPowerUsage(antenna) * antenna.PowerDrawLinear * 1e-6 * TimeWarp.fixedDeltaTime,
               "Σκοπός telecom");
         }
       }
+      refresh_watch_.Stop();
+      metrics.num_fixed_update_iterations_++;
+      metrics.fixed_update_runtime_ = refresh_watch_.Elapsed.TotalMilliseconds;
+      UnityEngine.Profiling.Profiler.EndSample();
     }
 
     private void UpdateConnections() {

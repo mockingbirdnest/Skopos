@@ -100,7 +100,7 @@ namespace σκοπός {
         Telecom.Instance.network.AddStations(stations_);
         Telecom.Instance.network.AddConnections(connections_);
       }
-      Telecom.Instance.network.Refresh();
+      Telecom.Instance.ReloadContractConnections(null);
     }
 
     private Operation operation_;

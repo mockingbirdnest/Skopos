@@ -105,6 +105,7 @@
     <Compile Include="kerbalism.cs" />
     <Compile Include="main_window.cs" />
     <Compile Include="priority_queue.cs" />
+    <Compile Include="RuntimeMetrics.cs" />
     <Compile Include="service.cs" />
     <Compile Include="connection.cs" />
     <Compile Include="connection_availability.cs" />
