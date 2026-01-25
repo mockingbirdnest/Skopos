@@ -268,14 +268,18 @@ namespace σκοπός {
     var boundary = new PriorityQueue<RACommNode, double>();
     var interior = new HashSet<RACommNode>();
 
+    // Dijkstra’s algorithm without DecreaseKey.
     distances[source] = 0;
     boundary.Enqueue(source, 0);
     previous[source] = null;
     int rx_found = 0;
     channels = new Channel[destinations.Count()];
     bool is_point_to_multipoint = destinations.Count() > 1;
-
     while (boundary.TryDequeue(out RACommNode tx, out double tx_distance)) {
+      if (tx_distance != distances[tx]) {
+        // We have already considered `tx` through a shorter path.
+        continue;
+      }
       if (tx_distance > latency_limit * c) {
         // We have run out of latency, no need to keep searching.
         return rx_found == 0 ? Unavailable : Partial;
