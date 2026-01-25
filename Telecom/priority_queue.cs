@@ -8,8 +8,8 @@ namespace σκοπός {
 // Only the subset of the API that is actually used by Σκοπός is implemented.
 // We implement it as a quaternary heap like .NET, see
 // https://github.com/dotnet/dotnet/blob/v10.0.0/src/runtime/src/libraries/System.Collections/src/System/Collections/Generic/PriorityQueue.cs
-// Enqueue and TryDequeue are logarithmic in the size of the container.
-// TryPeek is O(1).
+// `Enqueue` and `TryDequeue` are logarithmic in the size of the container.
+// `TryPeek` is O(1).
 public class PriorityQueue<TElement, TPriority> {
   public void Enqueue(TElement element, TPriority priority) {
     // TODO(egg): We could save this initialization by managing the array
