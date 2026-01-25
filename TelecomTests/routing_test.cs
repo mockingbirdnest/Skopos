@@ -305,6 +305,37 @@ public class RoutingTest {
   }
 
   [TestMethod]
+  public void DecreasingTheBoundary() {
+    // Searching for an x-to-u path on this graph will cause a decrease-key on z
+    // (first found via t, then via y), or a duplicate enqueueing of z and a
+    // duplicate dequeueing of z (at distances 2 and 1+√5, both less than the
+    // distance 4 of u), depending on the implementation of Dijkstra’s
+    // algorithm.
+    // x  →  y→z   →   u
+    // ↓      ↗
+    // t
+    var x = MakeNode("x", 0,  0);
+    var y = MakeNode("y", 1.5,  0);
+    var z = MakeNode("z", 2,  0);
+    var t = MakeNode("t", 0, -1);
+    var u = MakeNode("u", 4,  0);
+    MakeLink(x, y, 10e6, 10e6);
+    MakeLink(y, z, 10e6, 10e6);
+    MakeLink(x, t, 10e6, 10e6);
+    MakeLink(t, z, 10e6, 10e6);
+    MakeLink(z, u, 10e6, 10e6);
+    Assert.AreEqual(
+        Routing.PointToMultipointAvailability.Available,
+        routing_.FindChannelsInIsolation(source: x,
+                                         destinations: new[] {u},
+                                         latency_limit: double.PositiveInfinity,
+                                         data_rate: 10e6,
+                                         out Routing.Channel[] x_u));
+    CollectionAssert.AreEqual(new[]{y, z, u},
+                              x_u[0].ReceivingStations());
+  }
+
+  [TestMethod]
   public void ShortestPath() {
     // The lower-latency path is the one that has more edges; we use it first,
     // then only the higher-latency path remains.
