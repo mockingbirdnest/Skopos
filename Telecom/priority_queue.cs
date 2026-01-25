@@ -8,6 +8,8 @@ namespace σκοπός {
 // Only the subset of the API that is actually used by Σκοπός is implemented.
 // We implement it as a quaternary heap like .NET, see
 // https://github.com/dotnet/dotnet/blob/v10.0.0/src/runtime/src/libraries/System.Collections/src/System/Collections/Generic/PriorityQueue.cs
+// Enqueue and TryDequeue are logarithmic in the size of the container.
+// TryPeek is O(1).
 public class PriorityQueue<TElement, TPriority> {
   public void Enqueue(TElement element, TPriority priority) {
     // TODO(egg): We could save this initialization by managing the array
@@ -57,15 +59,16 @@ public class PriorityQueue<TElement, TPriority> {
     nodes_[i] = node;
   }
 
-  // Inserts `node` in the subtree rooted at `i`, moving its ancestors up.  This
-  // operation overwrites the node at `i`.
+  // Inserts `node` in the subtree rooted at `subtree_root`, moving its
+  // ancestors up.  This operation overwrites the node at `subtree_root`.
   private void InsertBelow((TElement element, TPriority priority) node, int subtree_root) {
-    for (int c = leftmost_child_index(subtree_root); c < nodes_.Count;
-         c = leftmost_child_index(subtree_root)) {
-      var first_child_in_queue = nodes_[c];
-      int first_child_in_queue_index = c;
-      int past_last_child = Math.Min(c + max_children_, nodes_.Count);
-      for (; c < past_last_child; ++c) {
+    for (int leftmost = leftmost_child_index(subtree_root);
+         leftmost < nodes_.Count;
+         leftmost = leftmost_child_index(subtree_root)) {
+      var first_child_in_queue = nodes_[leftmost];
+      int first_child_in_queue_index = leftmost;
+      int past_last_child = Math.Min(leftmost + max_children_, nodes_.Count);
+      for (int c = leftmost; c < past_last_child; ++c) {
         var child = nodes_[c];
         if (Comparer<TPriority>.Default.Compare(child.priority,
                                                 first_child_in_queue.priority) < 0) {
@@ -97,4 +100,4 @@ public class PriorityQueue<TElement, TPriority> {
       new List<(TElement element, TPriority priority)>();
 }
 
-}
+}  // namespace σκοπός

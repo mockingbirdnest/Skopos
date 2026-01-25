@@ -72,4 +72,4 @@ public class PriorityQueueTest {
   }
 }
 
-}
+}  // namespace σκοπός
