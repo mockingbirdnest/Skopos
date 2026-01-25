@@ -34,6 +34,13 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
         double.TryParse(alert_rate_limit_text, out telecom_.max_alert_rate_in_days_);
         UnityEngine.GUILayout.Label($"days ({telecom_.max_alert_rate_in_days_})");
       }
+
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
+        UnityEngine.GUILayout.Label($"Contracted connections: {telecom_.network.contracted_connections.Count}");
+        UnityEngine.GUILayout.Label($"Fixed Updates: {telecom_.runtimeMetrics_.num_fixed_update_iterations_}");
+        UnityEngine.GUILayout.Label($"Average Runtime: {telecom_.runtimeMetrics_.AverageFixedUpdateRuntime:F2} ms");
+      }
+
       var inspected_connections = connection_inspectors_.Keys.ToArray();
       foreach (var inspected_connection in inspected_connections) {
         if (!telecom_.network.contracted_connections.Contains(inspected_connection)) {

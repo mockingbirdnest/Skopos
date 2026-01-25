@@ -158,8 +158,11 @@ namespace σκοπός {
       }
     }
 
+    private System.Diagnostics.Stopwatch refresh_watch_ = new System.Diagnostics.Stopwatch();
     public void Refresh() {
-
+      UnityEngine.Profiling.Profiler.BeginSample("Skopos.Network.FixedUpdate");
+      var metrics = Telecom.Instance.runtimeMetrics_;
+      refresh_watch_.Start();
       UpdateConnections();
       foreach (RealAntennaDigital antenna in routing_.usage.Transmitters()) {
         if ((antenna?.ParentNode as RACommNode).ParentVessel is Vessel vessel) {
@@ -167,11 +170,14 @@ namespace σκοπός {
               vessel,
               "ElectricCharge",
               // PowerDrawLinear is in mW, ElectricCharge is in kJ.
-              routing_.usage.TxPowerUsage(antenna) * antenna.PowerDrawLinear *
-              1e-6 * TimeWarp.fixedDeltaTime,
+              routing_.usage.TxPowerUsage(antenna) * antenna.PowerDrawLinear * 1e-6 * TimeWarp.fixedDeltaTime,
               "Σκοπός telecom");
         }
       }
+      refresh_watch_.Stop();
+      metrics.num_fixed_update_iterations_++;
+      metrics.fixed_update_runtime_ = refresh_watch_.Elapsed.TotalMilliseconds;
+      UnityEngine.Profiling.Profiler.EndSample();
     }
 
     private void UpdateConnections() {
