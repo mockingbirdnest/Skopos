@@ -310,7 +310,9 @@ public class RoutingTest {
     // (first found via t, then via y), or a duplicate enqueueing of z and a
     // duplicate dequeueing of z (at distances 2 and 1+√5, both less than the
     // distance 4 of u), depending on the implementation of Dijkstra’s
-    // algorithm.
+    // algorithm.  Note that ShortestPath below will also hit the decrease-key
+    // or double-enqueue, but not the double-dequeue (the first dequeue being
+    // the termination of the algorithm).
     // x  →  y→z   →   u
     // ↓      ↗
     // t
