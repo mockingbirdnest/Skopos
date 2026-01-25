@@ -274,8 +274,8 @@ namespace σκοπός {
     boundary.Enqueue(source, 0);
     previous[source] = null;
     int rx_found = 0;
-    channels = new Channel[destinations.Count()];
-    bool is_point_to_multipoint = destinations.Count() > 1;
+    channels = new Channel[destinations.Count];
+    bool is_point_to_multipoint = destinations.Count > 1;
     while (boundary.TryDequeue(out RACommNode tx, out double tx_distance)) {
       if (tx_distance != distances[tx]) {
         // We have already considered `tx` through a shorter path.
@@ -315,7 +315,7 @@ namespace σκοπός {
 
         var link = OrientedLink.Get(this, from: tx, to: rx);
 
-        if (link.CapacityWithUsage(usage) < data_rate) {
+        if (link.max_data_rate < data_rate || link.CapacityWithUsage(usage) < data_rate) {
           continue;
         }
 
@@ -539,7 +539,7 @@ namespace σκοπός {
           band.ChannelWidth - Math.Max(usage.SpectrumUsage(tx_antenna),
                                        usage.SpectrumUsage(rx_antenna));
       double bandwidth_limited_data_rate =
-          Math.Min(max_symbol_rate, available_spectrum) * bits_per_symbol;
+          Math.Min(max_symbol_rate_, available_spectrum) * bits_per_symbol_;
       double power_limited_data_rate =
           max_data_rate * (1 - usage.TxPowerUsage(tx_antenna));
       return Math.Min(bandwidth_limited_data_rate, power_limited_data_rate);
@@ -569,11 +569,14 @@ namespace σκοπός {
       this.ra_link = ra_link;
       this.forward = forward;
       routing_ = routing;
+      if (ra_link != null) {
+        bits_per_symbol_ = encoder.CodingRate * modulator.ModulationBits;
+        max_symbol_rate_ = max_data_rate / bits_per_symbol_;
+      }
     }
 
-    private double max_symbol_rate => max_data_rate / bits_per_symbol;
-    private double bits_per_symbol =>
-        encoder.CodingRate * modulator.ModulationBits;
+    private double max_symbol_rate_;
+    private double bits_per_symbol_;
 
     private Routing routing_;
   }
