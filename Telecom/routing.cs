@@ -133,6 +133,7 @@ namespace σκοπός {
   public void Reset(IEnumerable<RACommNode> tx_only,
                     IEnumerable<RACommNode> rx_only,
                     IEnumerable<RACommNode> multiple_tracking_tx) {
+    OrientedLink.ReturnLinks(this);
     links_.Clear();
     current_network_usage_.Clear();
 
@@ -273,8 +274,8 @@ namespace σκοπός {
     boundary.Enqueue(source, 0);
     previous[source] = null;
     int rx_found = 0;
-    channels = new Channel[destinations.Count()];
-    bool is_point_to_multipoint = destinations.Count() > 1;
+    channels = new Channel[destinations.Count];
+    bool is_point_to_multipoint = destinations.Count > 1;
     while (boundary.TryDequeue(out RACommNode tx, out double tx_distance)) {
       if (tx_distance != distances[tx]) {
         // We have already considered `tx` through a shorter path.
@@ -314,7 +315,7 @@ namespace σκοπός {
 
         var link = OrientedLink.Get(this, from: tx, to: rx);
 
-        if (link.CapacityWithUsage(usage) < data_rate) {
+        if (link.max_data_rate < data_rate || link.CapacityWithUsage(usage) < data_rate) {
           continue;
         }
 
@@ -479,6 +480,14 @@ namespace σκοπός {
   }
 
   public class OrientedLink {
+    private static readonly Queue<OrientedLink> pool = new Queue<OrientedLink>();
+    private static OrientedLink GetFromPool() => pool.Count > 0 ? pool.Dequeue() : new OrientedLink();
+    internal static void ReturnLinks(Routing r) {
+      foreach (var link in r.links_.Values) {
+        link.Clear();
+        pool.Enqueue(link);
+      }
+    }
     public static OrientedLink Get(
         Routing routing,
         RACommNode from,
@@ -486,7 +495,8 @@ namespace σκοπός {
       if (!routing.links_.TryGetValue((from, to), out OrientedLink link)) {
         var ra_link = (RACommLink)from[to];
         bool forward = ra_link.a == from;
-        link = new OrientedLink(from, to, ra_link, forward, routing);
+        link = GetFromPool();
+        link.Set(from, to, ra_link, forward, routing);
         routing.links_.Add((from, to), link);
       }
       return link;
@@ -496,10 +506,10 @@ namespace σκοπός {
       return new SourcedLink(null, null, this);
     }
 
-    public readonly RACommNode tx;
-    public readonly RACommNode rx;
-    public readonly RACommLink ra_link;
-    public readonly bool forward;
+    public RACommNode tx { get; private set; }
+    public RACommNode rx { get; private set; }
+    public RACommLink ra_link { get; private set; }
+    public bool forward { get; private set; }
 
     public RealAntennaDigital tx_antenna =>
         (RealAntennaDigital)(forward ? ra_link.FwdAntennaTx
@@ -529,7 +539,7 @@ namespace σκοπός {
           band.ChannelWidth - Math.Max(usage.SpectrumUsage(tx_antenna),
                                        usage.SpectrumUsage(rx_antenna));
       double bandwidth_limited_data_rate =
-          Math.Min(max_symbol_rate, available_spectrum) * bits_per_symbol;
+          Math.Min(max_symbol_rate_, available_spectrum) * bits_per_symbol_;
       double power_limited_data_rate =
           max_data_rate * (1 - usage.TxPowerUsage(tx_antenna));
       return Math.Min(bandwidth_limited_data_rate, power_limited_data_rate);
@@ -543,23 +553,32 @@ namespace σκοπός {
       return data_rate / (encoder.CodingRate * modulator.ModulationBits);
     }
 
+    private OrientedLink() { }
     private OrientedLink(RACommNode tx,
                          RACommNode rx,
                          RACommLink ra_link,
                          bool forward,
                          Routing routing) {
+      Set(tx, rx, ra_link, forward, routing);
+    }
+
+    private void Clear() => Set(null, null, null, true, null);
+    private void Set(RACommNode tx, RACommNode rx, RACommLink ra_link, bool forward, Routing routing) {
       this.tx = tx;
       this.rx = rx;
       this.ra_link = ra_link;
       this.forward = forward;
       routing_ = routing;
+      if (ra_link != null) {
+        bits_per_symbol_ = encoder.CodingRate * modulator.ModulationBits;
+        max_symbol_rate_ = max_data_rate / bits_per_symbol_;
+      }
     }
 
-    private double max_symbol_rate => max_data_rate / bits_per_symbol;
-    private double bits_per_symbol =>
-        encoder.CodingRate * modulator.ModulationBits;
+    private double max_symbol_rate_;
+    private double bits_per_symbol_;
 
-    private readonly Routing routing_;
+    private Routing routing_;
   }
 
   private readonly RoutingNetworkUsage current_network_usage_;
