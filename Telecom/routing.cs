@@ -151,12 +151,14 @@ namespace σκοπός {
       RACommNode source,
       RACommNode destination,
       double round_trip_latency_limit,
-      double one_way_data_rate) {
+      double one_way_data_rate,
+      NetworkPartitioner partitioner) {
     return FindCircuit(source,
                        destination,
                        round_trip_latency_limit,
                        one_way_data_rate,
-                       NetworkUsage.None);
+                       NetworkUsage.None,
+                       partitioner);
   }
 
   public Circuit FindAndUseAvailableCircuit(
@@ -164,13 +166,15 @@ namespace σκοπός {
       RACommNode destination,
       double round_trip_latency_limit,
       double one_way_data_rate,
+      NetworkPartitioner partitioner,
       Connection connection) {
     Circuit circuit = FindCircuit(
         source,
         destination,
         round_trip_latency_limit,
         one_way_data_rate,
-        current_network_usage_);
+        current_network_usage_,
+        partitioner);
     if (circuit != null) {
       foreach (OrientedLink link in circuit.forward.links) {
         current_network_usage_.UseLinks(
@@ -191,12 +195,14 @@ namespace σκοπός {
       IList<RACommNode> destinations,
       double latency_limit,
       double data_rate,
+      NetworkPartitioner partitioner,
       out Channel[] channels) {
     return FindChannels(source,
                         destinations,
                         latency_limit,
                         data_rate,
                         NetworkUsage.None,
+                        partitioner,
                         out channels);
   }
 
@@ -205,6 +211,7 @@ namespace σκοπός {
       IList<RACommNode> destinations,
       double latency_limit,
       double data_rate,
+      NetworkPartitioner partitioner,
       out Channel[] channels,
       Connection connection) {
     PointToMultipointAvailability availability = FindChannels(
@@ -213,6 +220,7 @@ namespace σκοπός {
         latency_limit,
         data_rate,
         current_network_usage_,
+        partitioner,
         out channels);
     if (availability != Unavailable) {
       var links_by_tx_antenna =
@@ -230,12 +238,14 @@ namespace σκοπός {
                               RACommNode destination,
                               double round_trip_latency_limit,
                               double one_way_data_rate,
-                              NetworkUsage usage) {
+                              NetworkUsage usage,
+                              NetworkPartitioner partitioner) {
     if (FindChannels(source,
                      new[]{destination},
                      round_trip_latency_limit,
                      one_way_data_rate,
                      usage,
+                     partitioner,
                      out Channel[] forward) == Unavailable) {
       return null;
     }
@@ -249,6 +259,7 @@ namespace σκοπός {
                      round_trip_latency_limit - forward[0].latency,
                      one_way_data_rate,
                      usage_with_forward_channel,
+                     partitioner,
                      out Channel[] backward) == Unavailable) {
       return null;
     }
@@ -261,6 +272,7 @@ namespace σκοπός {
       double latency_limit,
       double data_rate,
       NetworkUsage usage,
+      NetworkPartitioner partitioner,
       out Channel[] channels) {
     const double c = 299792458;
     // TODO(egg): consider using the stock intrusive data structure.
