@@ -65,9 +65,21 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
           open_contracts_.Add(contract, false);
         }
       }
+      var ok_style = UnityEngine.GUI.skin.label;
+      var disconnected_style = principia.ksp_plugin_adapter.Style.Warning(
+        UnityEngine.GUI.skin.label);
+
       foreach (var contract_connections in telecom_.network.connections_by_contract) {
         var contract = contract_connections.Key;
         var connections = contract_connections.Value;
+        bool all_available = connections.All(connection => {
+          if (connection is PointToMultipointConnection point_to_multipoint) {
+            return point_to_multipoint.channel_services.All(service => service.basic.available);
+          } else if (connection is DuplexConnection duplex) {
+            return duplex.basic_service.available;
+          } else { return false; }
+        });
+        var contract_style = all_available ? ok_style : disconnected_style;
         using (new UnityEngine.GUILayout.HorizontalScope()) {
           if (UnityEngine.GUILayout.Button(
                 open_contracts_[contract] ? "−" : "+", GUILayoutWidth(1))) {
@@ -75,7 +87,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
             ScheduleShrink();
             return;
           }
-          UnityEngine.GUILayout.Label(contract.Title);
+          UnityEngine.GUILayout.Label(contract.Title, contract_style);
         }
         if (open_contracts_[contract]) {
           foreach (var connection in connections) {
@@ -86,9 +98,11 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
                 var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[0]);
                 bool available = services.basic.available;
                 string status = available ? "OK" : "Disconnected";
+                var style = available ? ok_style : disconnected_style;
                 using (new UnityEngine.GUILayout.HorizontalScope()) {
                   UnityEngine.GUILayout.Label(
                       $"From {tx.displaynodeName} to {rx.displaynodeName}: {status}",
+                      style,
                       GUILayoutWidth(15));
                   connection_inspectors_[connection].RenderButton();
                 }
@@ -103,11 +117,13 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
               for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
                 var services = point_to_multipoint.channel_services[i];
                 bool available = services.basic.available;
+                var style = available ? ok_style : disconnected_style;
                 string status = available ? "OK" : "Disconnected";
+                var style = available ? ok_style : disconnected_style;
                 var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[i]);
                 if (point_to_multipoint.rx_names.Length > 1) {
                   UnityEngine.GUILayout.Label(
-                    $@"— {rx.displaynodeName}: {status}");
+                    $@"— {rx.displaynodeName}: {status}", style);
                 }
               }
             } else if (connection is DuplexConnection duplex) {
@@ -115,9 +131,11 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
               var trx1 = telecom_.network.GetStation(duplex.trx_names[1]);
               bool available = duplex.basic_service.available;
               string status = available ? "OK" : "Disconnected";
+              var style = available ? ok_style : disconnected_style;
               using (new UnityEngine.GUILayout.HorizontalScope()) {
                 UnityEngine.GUILayout.Label(
-                    $@"Duplex  between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
+                    $@"Duplex between {trx0.displaynodeName} and {trx1.displaynodeName}: {status}",
+                    style,
                     GUILayoutWidth(15));
                 connection_inspectors_[connection].RenderButton();
               }
