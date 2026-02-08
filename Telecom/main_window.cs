@@ -66,8 +66,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
         }
       }
       var ok_style = UnityEngine.GUI.skin.label;
-      var disconnected_style = principia.ksp_plugin_adapter.Style.Warning(
-        UnityEngine.GUI.skin.label);
+      var disconnected_style = principia.ksp_plugin_adapter.Style.Warning(ok_style);
 
       foreach (var contract_connections in telecom_.network.connections_by_contract) {
         var contract = contract_connections.Key;
@@ -117,7 +116,6 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
               for (int i = 0; i < point_to_multipoint.rx_names.Length; ++i) {
                 var services = point_to_multipoint.channel_services[i];
                 bool available = services.basic.available;
-                var style = available ? ok_style : disconnected_style;
                 string status = available ? "OK" : "Disconnected";
                 var style = available ? ok_style : disconnected_style;
                 var rx = telecom_.network.GetStation(point_to_multipoint.rx_names[i]);
