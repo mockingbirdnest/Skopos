@@ -144,6 +144,7 @@ namespace σκοπός {
 
     internal void UpdateStationVisibilityHandler() { 
       if (RACommNetUI.Instance is RACommNetUI ui) {
+        ui.RefreshSiteNodes();
         foreach (var site in ui.groundStationSiteNodes) {
           var station_comm = ((GroundStationSiteNode)site.siteObject).node;
           bool on_network = stations_.Values.Any(station => station.Comm == station_comm);
