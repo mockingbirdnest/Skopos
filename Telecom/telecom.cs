@@ -81,6 +81,7 @@ namespace σκοπός {
         Log("Network creation stalling for station CommNetHomes to create...");
         yield return new UnityEngine.WaitForEndOfFrame();
       }
+      network.ConstructSiteNodes();
       network.UpdateStationVisibilityHandler();
     }
 

@@ -142,10 +142,19 @@ namespace σκοπός {
       }
     }
 
+    internal void ConstructSiteNodes() {
+      if (RACommNetUI.Instance is RACommNetUI ui) {
+        foreach (var station in stations_.Values) {
+          ui.ConstructSiteNode(station);
+        }
+      } else {
+        Telecom.Log($"WARN Could not construct SiteNodes: UI does not exist");
+      }
+    }
+
     internal void UpdateStationVisibilityHandler() { 
       if (RACommNetUI.Instance is RACommNetUI ui) {
-        ui.RefreshSiteNodes();
-        foreach (var site in ui.groundStationSiteNodes) {
+        foreach (var site in ui.groundStationSiteNodes.Values) {
           var station_comm = ((GroundStationSiteNode)site.siteObject).node;
           bool on_network = stations_.Values.Any(station => station.Comm == station_comm);
           site.wayPoint.node.OnUpdateVisible -= OnUpdateGroundStationVisible;
