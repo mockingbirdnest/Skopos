@@ -44,7 +44,6 @@ namespace σκοπός {
       foreach (ConfigNode node in connection_nodes) {
         connections_[node.GetValue("name")].Load(node);
       }
-      (CommNet.CommNetScenario.Instance as RACommNetScenario).Network.InvalidateCache();    // Inform RA of changes to the node list.
     }
 
     public void Serialize(ConfigNode node) {

@@ -32,6 +32,8 @@ namespace σκοπός {
 
     public override void OnLoad(ConfigNode node) {
       serialized_network_ = node.GetNode("network") ?? new ConfigNode();
+      Log("Creating Network");
+      network = new Network(serialized_network_);
     }
 
     public override void OnSave(ConfigNode node) {
@@ -71,8 +73,7 @@ namespace σκοπός {
       while (RACommNetScenario.RACN == null || !CommNet.CommNetNetwork.Initialized) {
           yield return new UnityEngine.WaitForFixedUpdate();
       }
-      Log("Creating Network");
-      network = new Network(serialized_network_);
+      (CommNet.CommNetScenario.Instance as RACommNetScenario).Network.InvalidateCache();    // Inform RA of changes to the node list.
       ReloadContractConnections(null);
       enabled = true;
       GameEvents.Contract.onAccepted.Add(ReloadContractConnections);
