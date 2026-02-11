@@ -81,8 +81,17 @@ namespace σκοπός {
         Log("Network creation stalling for station CommNetHomes to create...");
         yield return new UnityEngine.WaitForEndOfFrame();
       }
-      network.ConstructSiteNodes();
       network.UpdateStationVisibilityHandler();
+    }
+
+    internal IEnumerator UpdateGroundStationNodes() {
+      Log("SiteNode creation stalling for station CommNetHomes to create...");
+      while (network == null || network.AllGround().Any(node => node.Comm == null))  {
+        yield return new UnityEngine.WaitForEndOfFrame();
+      } // Stall for RACommNetHomes.
+      network.ConstructSiteNodes(); 
+      // This can no-op if RACommNetUI.Instance is null. This is okay, since it prevents a hanging coroutine from sticking around forever.
+      // And if there's no CommNetUI, then there's nothing to display anyway, so it should be okay if the SiteNodes aren't created yet?
     }
 
     private bool on_contracts_changed_cr_running = false;

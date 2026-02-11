@@ -69,6 +69,7 @@ namespace σκοπός {
         Telecom.Log($"Adding station {name}");
         stations_.Add(name, MakeStation(name));
       }
+      Telecom.Instance.StartCoroutine(Telecom.Instance.UpdateGroundStationNodes());
     }
 
     RACommNetHome MakeStation(string name) {
@@ -144,11 +145,12 @@ namespace σκοπός {
 
     internal void ConstructSiteNodes() {
       if (RACommNetUI.Instance is RACommNetUI ui) {
-        foreach (var station in stations_.Values) {
+        foreach (var station in AllGround()) {
           ui.ConstructSiteNode(station);
         }
+        Telecom.Log("Successfully constructed site nodes");
       } else {
-        Telecom.Log($"WARN Could not construct SiteNodes: UI does not exist");
+        Telecom.Log($"Could not construct SiteNodes: UI does not exist");
       }
     }
 
