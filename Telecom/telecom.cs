@@ -87,7 +87,7 @@ namespace σκοπός {
 
     internal IEnumerator UpdateGroundStationNode(RACommNetHome station) {
       Log($"SiteNode {station.name} creation stalling for station CommNetHomes to create...");
-      while (network == null || network.AllGround().Any(node => node.Comm == null) || !(RACommNetUI.Instance is RACommNetUI))  {
+      while (network is null || network.AllGround().Any(node => node.Comm == null) || !(RACommNetUI.Instance is RACommNetUI))  {
         yield return new UnityEngine.WaitForEndOfFrame();
       } // Stall for RACommNetHomes.
       (RACommNetUI.Instance as RACommNetUI).ConstructSiteNode(station); 
