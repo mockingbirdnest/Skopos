@@ -67,9 +67,9 @@ namespace σκοπός {
           continue;
         }
         Telecom.Log($"Adding station {name}");
-        stations_.Add(name, MakeStation(name));
+        RACommNetHome new_station = MakeStation(name);
+        stations_.Add(name, new_station);
       }
-      Telecom.Instance.StartCoroutine(Telecom.Instance.UpdateGroundStationNodes());
     }
 
     RACommNetHome MakeStation(string name) {
@@ -110,6 +110,7 @@ namespace σκοπός {
       } else if (node.GetValue("role") == "rx") {
         rx_only_.Add(station);
       }
+      Telecom.Instance.StartCoroutine(Telecom.Instance.UpdateGroundStationNode(station));
       return station;
     }
 
@@ -140,17 +141,6 @@ namespace σκοπός {
         if (station.Comm.RAAntennaList.Count == 0) {
           Telecom.Log($"No antenna for {pair.Key}; Ground TL is {RACommNetScenario.GroundStationTechLevel}");
         }
-      }
-    }
-
-    internal void ConstructSiteNodes() {
-      if (RACommNetUI.Instance is RACommNetUI ui) {
-        foreach (var station in AllGround()) {
-          ui.ConstructSiteNode(station);
-        }
-        Telecom.Log("Successfully constructed site nodes");
-      } else {
-        Telecom.Log($"Could not construct SiteNodes: UI does not exist");
       }
     }
 
@@ -260,5 +250,6 @@ namespace σκοπός {
     public Dictionary<Contracts.Contract, List<Connection>> connections_by_contract  { get; } =
         new Dictionary<Contracts.Contract, List<Connection>>();
     public HashSet<Connection> contracted_connections { get; } = new HashSet<Connection>();
+    public HashSet<RACommNetHome> needs_site_node { get;} = new HashSet<RACommNetHome>();
   }
 }

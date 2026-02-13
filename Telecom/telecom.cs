@@ -6,6 +6,7 @@ using RealAntennas.MapUI;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Collections;
+using RealAntennas.Network;
 
 namespace σκοπός {
   [KSPScenario(
@@ -84,12 +85,12 @@ namespace σκοπός {
       network.UpdateStationVisibilityHandler();
     }
 
-    internal IEnumerator UpdateGroundStationNodes() {
-      Log("SiteNode creation stalling for station CommNetHomes to create...");
-      while (network == null || network.AllGround().Any(node => node.Comm == null))  {
+    internal IEnumerator UpdateGroundStationNode(RACommNetHome station) {
+      Log($"SiteNode {station.name} creation stalling for station CommNetHomes to create...");
+      while (network == null || network.AllGround().Any(node => node.Comm == null) || !(RACommNetUI.Instance is RACommNetUI))  {
         yield return new UnityEngine.WaitForEndOfFrame();
       } // Stall for RACommNetHomes.
-      network.ConstructSiteNodes(); 
+      (RACommNetUI.Instance as RACommNetUI).ConstructSiteNode(station); 
       // This can no-op if RACommNetUI.Instance is null. This is okay, since it prevents a hanging coroutine from sticking around forever.
       // And if there's no CommNetUI, then there's nothing to display anyway, so it should be okay if the SiteNodes aren't created yet?
     }
