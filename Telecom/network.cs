@@ -109,6 +109,7 @@ namespace σκοπός {
       } else if (node.GetValue("role") == "rx") {
         rx_only_.Add(station);
       }
+      Telecom.Instance.StartCoroutine(Telecom.Instance.UpdateGroundStationNode(station));
       return station;
     }
 
@@ -144,7 +145,7 @@ namespace σκοπός {
 
     internal void UpdateStationVisibilityHandler() { 
       if (RACommNetUI.Instance is RACommNetUI ui) {
-        foreach (var site in ui.groundStationSiteNodes) {
+        foreach (var site in ui.groundStationSiteNodes.Values) {
           var station_comm = ((GroundStationSiteNode)site.siteObject).node;
           bool on_network = stations_.Values.Any(station => station.Comm == station_comm);
           site.wayPoint.node.OnUpdateVisible -= OnUpdateGroundStationVisible;

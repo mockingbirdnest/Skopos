@@ -6,6 +6,7 @@ using RealAntennas.MapUI;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Collections;
+using RealAntennas.Network;
 
 namespace σκοπός {
   [KSPScenario(
@@ -82,6 +83,14 @@ namespace σκοπός {
         yield return new UnityEngine.WaitForEndOfFrame();
       }
       network.UpdateStationVisibilityHandler();
+    }
+
+    internal IEnumerator UpdateGroundStationNode(RACommNetHome station) {
+      Log($"Creating GroundStationSiteNode for {station.name}...");
+      while (network is null || station.Comm is null || !(RACommNetUI.Instance is RACommNetUI))  {
+        yield return new UnityEngine.WaitForEndOfFrame();
+      } // Stall for RACommNetHomes.
+      (RACommNetUI.Instance as RACommNetUI).ConstructSiteNode(station); 
     }
 
     private bool on_contracts_changed_cr_running = false;
