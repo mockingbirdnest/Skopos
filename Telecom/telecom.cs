@@ -86,13 +86,11 @@ namespace σκοπός {
     }
 
     internal IEnumerator UpdateGroundStationNode(RACommNetHome station) {
-      Log($"SiteNode {station.name} creation stalling for station CommNetHomes to create...");
-      while (network is null || network.AllGround().Any(node => node.Comm == null) || !(RACommNetUI.Instance is RACommNetUI))  {
+      Log($"Creating GroundStationSiteNode for {station.name}...");
+      while (network is null || station.Comm is null || !(RACommNetUI.Instance is RACommNetUI))  {
         yield return new UnityEngine.WaitForEndOfFrame();
       } // Stall for RACommNetHomes.
       (RACommNetUI.Instance as RACommNetUI).ConstructSiteNode(station); 
-      // This can no-op if RACommNetUI.Instance is null. This is okay, since it prevents a hanging coroutine from sticking around forever.
-      // And if there's no CommNetUI, then there's nothing to display anyway, so it should be okay if the SiteNodes aren't created yet?
     }
 
     private bool on_contracts_changed_cr_running = false;

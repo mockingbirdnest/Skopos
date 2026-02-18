@@ -67,8 +67,7 @@ namespace σκοπός {
           continue;
         }
         Telecom.Log($"Adding station {name}");
-        RACommNetHome new_station = MakeStation(name);
-        stations_.Add(name, new_station);
+        stations_.Add(name, MakeStation(name));
       }
     }
 
@@ -250,6 +249,5 @@ namespace σκοπός {
     public Dictionary<Contracts.Contract, List<Connection>> connections_by_contract  { get; } =
         new Dictionary<Contracts.Contract, List<Connection>>();
     public HashSet<Connection> contracted_connections { get; } = new HashSet<Connection>();
-    public HashSet<RACommNetHome> needs_site_node { get;} = new HashSet<RACommNetHome>();
   }
 }
