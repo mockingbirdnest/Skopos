@@ -281,23 +281,27 @@ namespace σκοπός {
     var boundary = new PriorityQueue<RACommNode, double>();
     var interior = new HashSet<RACommNode>();
 
+    channels = new Channel[destinations.Count];
+    int num_channels_to_find = destinations.Where(x => !partitioner.disconnected_partition_.Contains(x) && partitioner.node_to_partition_map_[source] == partitioner.node_to_partition_map_[x]).Count();
+    if (partitioner.disconnected_partition_.Contains(source) || num_channels_to_find == 0) {
+        return PointToMultipointAvailability.Unavailable;
+    }
     // Dijkstra’s algorithm without DecreaseKey.
     distances[source] = 0;
     boundary.Enqueue(source, 0);
     previous[source] = null;
     int rx_found = 0;
-    channels = new Channel[destinations.Count];
     bool is_point_to_multipoint = destinations.Count > 1;
     while (boundary.TryDequeue(out RACommNode tx, out double tx_distance)) {
       if (tx_distance != distances[tx]) {
         // We have already considered `tx` through a shorter path.
         continue;
       }
+      int i = destinations.IndexOf(tx);
       if (tx_distance > latency_limit * c) {
         // We have run out of latency, no need to keep searching.
         return rx_found == 0 ? Unavailable : Partial;
-      } else if (destinations.Contains(tx)) {
-        int i = destinations.IndexOf(tx);
+      } else if (i > -1) {
         channels[i] = new Channel();
         for (OrientedLink link = previous[tx];
              link != null;
@@ -307,7 +311,7 @@ namespace σκοπός {
         channels[i].links.Reverse();
         channels[i].latency = tx_distance / c;
         ++rx_found;
-        if (rx_found == channels.Length) {
+        if (rx_found == num_channels_to_find) {
           return PointToMultipointAvailability.Available;
         }
       }
