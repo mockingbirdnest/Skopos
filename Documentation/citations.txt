@@ -65,3 +65,7 @@ List of sources and citations used for Skopos, in no particular order
 	https://itso.int/wp-content/uploads/2018/04/Presentation-by-Intelsat.pdf
 [33] Syncom Engineering report Volume II, 1967
 	https://ntrs.nasa.gov/api/citations/19670015715/downloads/19670015715.pdf
+[34] Overview of Ka-band Satellite System Developments, 2012
+	https://www.itu.int/dms_pub/itu-r/md/12/iturka.band/c/R12-ITURKA.BAND-C-0008!!PDF-E.pdf
+[35] Pilot Program and Operational Users of CS-2, 1987
+	https://doi.org/10.1016/0094-5765(87)90112-3
