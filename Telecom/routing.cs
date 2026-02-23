@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using CommNet.Network;
 using RealAntennas;
 using static σκοπός.Routing.PointToMultipointAvailability;
 
@@ -254,7 +255,7 @@ namespace σκοπός {
     }
     return new Circuit(forward[0], backward[0]);
   }
-
+    
   private PointToMultipointAvailability FindChannels(
       RACommNode source,
       IList<RACommNode> destinations,
@@ -262,13 +263,22 @@ namespace σκοπός {
       double data_rate,
       NetworkUsage usage,
       out Channel[] channels) {
+
+    if (Telecom.Instance.one_hop_optimize && destinations.Count == 1) {
+      Channel ans;
+      if (FindChannelsOneHop(source, destinations[0], latency_limit, data_rate, usage, out ans) == PointToMultipointAvailability.Available) {
+        channels = new Channel[1] {ans};
+        return PointToMultipointAvailability.Available;
+      }
+    }
     const double c = 299792458;
+    double latency_distance = c * latency_limit;
     // TODO(egg): consider using the stock intrusive data structure.
     var distances = new Dictionary<RACommNode, double>();
     var previous = new Dictionary<RACommNode, OrientedLink>();
     var boundary = new PriorityQueue<RACommNode, double>();
     var interior = new HashSet<RACommNode>();
-
+    
     // Dijkstra’s algorithm without DecreaseKey.
     distances[source] = 0;
     boundary.Enqueue(source, 0);
@@ -314,21 +324,135 @@ namespace σκοπός {
         }
 
         var link = OrientedLink.Get(this, from: tx, to: rx);
-
-        if (link.max_data_rate < data_rate || link.CapacityWithUsage(usage) < data_rate) {
+        if (link.max_data_rate < data_rate) { // Best-case data rate check.
           continue;
         }
 
-        double tentative_distance = tx_distance + link.length;
-        if (!distances.TryGetValue(rx, out double d) ||
-            tentative_distance < d) {
-          distances[rx] = tentative_distance;
-          previous[rx] = link;
-          boundary.Enqueue(rx, tentative_distance);
+        double tentative_distance = distances[tx] + link.length; 
+        if (tentative_distance > latency_distance || 
+            (distances.TryGetValue(rx, out double d) &&
+            tentative_distance > d)) { // Latency optimality check
+          continue;
         }
+
+        // Tx power check.
+        if (link.max_data_rate * (1 - usage.TxPowerUsage(link.tx_antenna)) < data_rate) {
+          continue;
+        }
+
+        double max_used_spectrum = link.band.ChannelWidth * link.bits_per_symbol - data_rate;
+        // Rx bandwidth check.
+        if (usage.SpectrumUsage(link.rx_antenna) * link.bits_per_symbol > max_used_spectrum) {
+          continue;
+        }
+
+        // Tx bandwidth check.
+        if (usage.SpectrumUsage(link.tx_antenna) * link.bits_per_symbol > max_used_spectrum) {
+          continue;
+        }
+        distances[rx] = tentative_distance;
+        previous[rx] = link;
+        boundary.Enqueue(rx, tentative_distance);
       }
     }
     return rx_found == 0 ? Unavailable : Partial;
+  }
+
+  private PointToMultipointAvailability FindChannelsOneHop(
+      RACommNode source,
+      RACommNode destination,
+      double latency_limit,
+      double data_rate,
+      NetworkUsage usage,
+      out Channel channel) {
+    const double c = 299792458;
+    double latency_distance = c * latency_limit;
+    channel = new Channel();
+    double best_distance = latency_distance;
+    foreach (RACommNode relay in relay_vessels_) {
+      if (source.TryGetValue(relay, out var inbound) && relay.TryGetValue(destination, out var outbound)) {
+        // Checks in this order, roughly in the order I expect them to fail.
+        // - Best outbound data rate is too poor.
+        // - Best inbound data rate is too poor.
+        // - This latency is already worst than the best one.
+        // - Outbound antenna doesn't have enough power
+        // - Outbound antenna doesn't have enough bandwidth
+        // - Inbound antenna doesn't have enough bandwidth
+        // - Source antenna doesn't have enough power
+        // - Source antenna doesn't have enough bandwidth
+        // - Destination antenna doesn't have enough bandwidth
+
+        OrientedLink outbound_link = OrientedLink.Get(this, from: relay, to: destination);
+        if (outbound_link.max_data_rate < data_rate) {
+          continue;
+        }
+
+        OrientedLink inbound_link = OrientedLink.Get(this, from: source, to: relay);
+        if (inbound_link.max_data_rate < data_rate) {
+          continue;
+        }
+
+        double distance = outbound_link.length + inbound_link.length;
+        if (distance > best_distance) {
+          continue;
+        }
+
+        if (outbound_link.max_data_rate * (1 - usage.TxPowerUsage(outbound_link.tx_antenna)) < data_rate) {
+          continue;
+        }
+        
+        double outbound_max_used_data_rate = outbound_link.band.ChannelWidth * outbound_link.bits_per_symbol - data_rate;
+        if (usage.SpectrumUsage(outbound_link.tx_antenna) * outbound_link.bits_per_symbol > outbound_max_used_data_rate) {
+          continue;
+        }
+        
+        double inbound_max_used_data_rate = inbound_link.band.ChannelWidth * inbound_link.bits_per_symbol - data_rate;
+        if (usage.SpectrumUsage(inbound_link.rx_antenna) * inbound_link.bits_per_symbol > inbound_max_used_data_rate) {
+          continue;
+        }
+
+        #if NEVER
+        // This checks that we don't overrun spectrum if we doubledip the same antenna. This is allowed by the default routing algorithm, so I'm leaving it as-is.
+        if (inbound_link.rx_antenna == outbound_link.tx_antenna) {
+          double total_required_spectrum = data_rate / outbound_link.bits_per_symbol + data_rate / inbound_link.bits_per_symbol;
+          if (usage.SpectrumUsage(inbound_link.tx_antenna) + total_required_spectrum > outbound_link.band.ChannelWidth) {
+            continue;
+          }
+        }
+        #endif
+        
+        if (inbound_link.max_data_rate * (1 - usage.TxPowerUsage(inbound_link.tx_antenna)) < data_rate) {
+          continue;
+        }
+
+        if (usage.SpectrumUsage(inbound_link.tx_antenna) * inbound_link.bits_per_symbol > inbound_max_used_data_rate) {
+          continue;
+        }
+
+        if (usage.SpectrumUsage(outbound_link.rx_antenna) * outbound_link.bits_per_symbol > outbound_max_used_data_rate) {
+          continue;
+        }
+
+        // All checks passed. (Goodness.)
+        best_distance = distance;
+        channel.links.Clear();
+        channel.links.Add(inbound_link);
+        channel.links.Add(outbound_link);
+      }
+    }
+    if (best_distance < latency_distance) return PointToMultipointAvailability.Available;
+    else return PointToMultipointAvailability.Unavailable;
+  }
+
+  public void FindRelays() {
+    relay_vessels_.Clear();
+    var home_body = FlightGlobals.GetHomeBody();
+    foreach (RACommNode node in (CommNet.CommNetNetwork.Instance?.CommNet as RACommNetwork).Nodes) {
+      if (node.ParentVessel?.mainBody == home_body && node.RAAntennaList.Any(ra => ra.RFBand.ChannelWidth >= 100e6)) { 
+        // Vessels that orbit around Earth and have a wideband antenna
+        relay_vessels_.Add(node);  
+      }
+    }
   }
 
   private class LinkUsage {
@@ -458,7 +582,7 @@ namespace σκοπός {
     }
 
     private void EnsureSameTxAntennaAndTL(IEnumerable<OrientedLink> links) {
-#if DEBUG
+#if NEVER
       RealAntennaDigital tx_antenna = links.First().tx_antenna;
       var antennas = from link in links select link.tx_antenna;
       if (antennas.Any(tx => tx != tx_antenna)) {
@@ -539,7 +663,7 @@ namespace σκοπός {
           band.ChannelWidth - Math.Max(usage.SpectrumUsage(tx_antenna),
                                        usage.SpectrumUsage(rx_antenna));
       double bandwidth_limited_data_rate =
-          Math.Min(max_symbol_rate_, available_spectrum) * bits_per_symbol_;
+          available_spectrum * bits_per_symbol_; // Max data rate check is already built into the power check
       double power_limited_data_rate =
           max_data_rate * (1 - usage.TxPowerUsage(tx_antenna));
       return Math.Min(bandwidth_limited_data_rate, power_limited_data_rate);
@@ -550,7 +674,7 @@ namespace σκοπός {
     }
 
     public double SpectrumUsageFromDataRate(double data_rate) {
-      return data_rate / (encoder.CodingRate * modulator.ModulationBits);
+      return data_rate / bits_per_symbol_;
     }
 
     private OrientedLink() { }
@@ -571,11 +695,10 @@ namespace σκοπός {
       routing_ = routing;
       if (ra_link != null) {
         bits_per_symbol_ = encoder.CodingRate * modulator.ModulationBits;
-        max_symbol_rate_ = max_data_rate / bits_per_symbol_;
       }
     }
 
-    private double max_symbol_rate_;
+    public double bits_per_symbol => bits_per_symbol_;
     private double bits_per_symbol_;
 
     private Routing routing_;
@@ -586,6 +709,8 @@ namespace σκοπός {
   private readonly Dictionary<(RACommNode, RACommNode), OrientedLink> links_ =
       new Dictionary<(RACommNode, RACommNode), OrientedLink>();
 
+  private readonly List<RACommNode> relay_vessels_ = new List<RACommNode>();
+  
   // Stations only capable of transmitting.
   private HashSet<RACommNode> tx_only_ = new HashSet<RACommNode>();
   // Station only capable of receiving.

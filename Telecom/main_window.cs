@@ -36,6 +36,10 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
       }
 
       using (new UnityEngine.GUILayout.HorizontalScope()) {
+        telecom_.one_hop_optimize = UnityEngine.GUILayout.Toggle(telecom_.one_hop_optimize, "Prefer one-bounce connections");
+      }
+
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
         UnityEngine.GUILayout.Label($"Contracted connections: {telecom_.network.contracted_connections.Count}");
         UnityEngine.GUILayout.Label($"Fixed Updates: {telecom_.runtimeMetrics_.num_fixed_update_iterations_}");
         UnityEngine.GUILayout.Label($"Average Runtime: {telecom_.runtimeMetrics_.AverageFixedUpdateRuntime:F2} ms");

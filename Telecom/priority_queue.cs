@@ -97,7 +97,7 @@ public class PriorityQueue<TElement, TPriority> {
   private const int max_children_ = 4;
   private const int log2_max_children_ = 2;
   private List<(TElement element, TPriority priority)> nodes_ =
-      new List<(TElement element, TPriority priority)>();
+      new List<(TElement element, TPriority priority)>(256); // Should prevent resizing. This is a terribly small optimisation.
 }
 
 }  // namespace σκοπός

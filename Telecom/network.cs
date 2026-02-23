@@ -7,24 +7,24 @@ using System.Linq;
 namespace σκοπός {
   public class Network {
     static ConfigNode GetStationDefinition(string name) {
-      foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
-        foreach (var definition in block.config.GetNodes("station")) {
+        foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
+          foreach (var definition in block.config.GetNodes("station")) {
           if (definition.GetValue("name") == name) {
-            return definition;
+              return definition;
+            }
           }
         }
-      }
       throw new KeyNotFoundException($"No definition for station {name}");
     }
 
     static ConfigNode GetConnectionDefinition(string name) {
-      foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
-        foreach (var definition in block.config.GetNodes("connection")) {
+        foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
+          foreach (var definition in block.config.GetNodes("connection")) {
           if (definition.GetValue("name") == name) {
-            return definition;
+              return definition;
+            }
           }
         }
-      }
       throw new KeyNotFoundException($"No definition for connection {name}");
     }
 
@@ -164,6 +164,9 @@ namespace σκοπός {
       UnityEngine.Profiling.Profiler.BeginSample("Skopos.Network.FixedUpdate");
       var metrics = Telecom.Instance.runtimeMetrics_;
       refresh_watch_.Start();
+      if (Telecom.Instance.one_hop_optimize) {
+        routing_.FindRelays();
+      }
       UpdateConnections();
       foreach (RealAntennaDigital antenna in routing_.usage.Transmitters()) {
         if ((antenna?.ParentNode as RACommNode).ParentVessel is Vessel vessel) {
