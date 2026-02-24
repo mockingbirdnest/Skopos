@@ -276,6 +276,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                   new[]{rx.Comm},
                   connection_.latency_limit,
                   connection_.data_rate,
+                  telecom_.network.partioner_,
                   out channels);
               if (channels[0] != null) {
                 capacity_limited = true;
@@ -291,6 +292,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                   new[]{rx.Comm},
                   latency_limit: double.PositiveInfinity,
                   connection_.data_rate,
+                  telecom_.network.partioner_,
                   out channels);
               bool purely_latency_limited = channels[0] != null;
               if (purely_latency_limited) {
@@ -304,6 +306,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                   new[]{rx.Comm},
                   connection_.latency_limit,
                   data_rate: 0,
+                  telecom_.network.partioner_,
                   out channels);
               bool purely_rate_limited = channels[0] != null;
               if (purely_rate_limited) {
@@ -321,6 +324,7 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                     new[]{rx.Comm},
                     latency_limit: double.PositiveInfinity,
                     data_rate: 0,
+                    telecom_.network.partioner_,
                     out channels);
                 if (channels[0] != null) {
                   string max_data_rate = RATools.PrettyPrintDataRate(
@@ -365,7 +369,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
               trx0.Comm,
               trx1.Comm,
               connection_.latency_limit,
-              connection_.data_rate);
+              connection_.data_rate,
+              telecom_.network.partioner_);
           if (circuit != null) {
             capacity_limited = true;
             UnityEngine.GUILayout.Label(
@@ -377,12 +382,14 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                 new[] { trx1.Comm },
                 connection_.latency_limit,
                 connection_.data_rate,
+                telecom_.network.partioner_,
                 out Routing.Channel[] forward);
             telecom_.network.routing_.FindChannelsInIsolation(
                 trx1.Comm,
                 new[] { trx0.Comm },
                 connection_.latency_limit,
                 connection_.data_rate,
+                telecom_.network.partioner_,
                 out Routing.Channel[] backward);
             if (forward[0] != null && backward[0] != null) {
               capacity_limited = true;
@@ -398,7 +405,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
               trx0.Comm,
               trx1.Comm,
               round_trip_latency_limit: double.PositiveInfinity,
-              connection_.data_rate);
+              connection_.data_rate,
+              telecom_.network.partioner_);
           bool purely_latency_limited = circuit != null;
           if (purely_latency_limited) {
             UnityEngine.GUILayout.Label(
@@ -410,7 +418,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
               trx0.Comm,
               trx1.Comm,
               connection_.latency_limit,
-              one_way_data_rate: 0);
+              one_way_data_rate: 0,
+              telecom_.network.partioner_);
           bool purely_rate_limited = circuit != null;
           if (purely_rate_limited) {
             string max_data_rate = RATools.PrettyPrintDataRate(
@@ -428,7 +437,8 @@ internal class ConnectionInspector : principia.ksp_plugin_adapter.SupervisedWind
                 trx0.Comm,
                 trx1.Comm,
                 round_trip_latency_limit: double.PositiveInfinity,
-                one_way_data_rate: 0);
+                one_way_data_rate: 0,
+                telecom_.network.partioner_);
             if (circuit != null) {
               string max_data_rate = RATools.PrettyPrintDataRate(
                   Math.Min(

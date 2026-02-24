@@ -151,12 +151,14 @@ namespace σκοπός {
       RACommNode source,
       RACommNode destination,
       double round_trip_latency_limit,
-      double one_way_data_rate) {
+      double one_way_data_rate,
+      NetworkPartitioner partitioner) {
     return FindCircuit(source,
                        destination,
                        round_trip_latency_limit,
                        one_way_data_rate,
-                       NetworkUsage.None);
+                       NetworkUsage.None,
+                       partitioner);
   }
 
   public Circuit FindAndUseAvailableCircuit(
@@ -164,13 +166,15 @@ namespace σκοπός {
       RACommNode destination,
       double round_trip_latency_limit,
       double one_way_data_rate,
+      NetworkPartitioner partitioner,
       Connection connection) {
     Circuit circuit = FindCircuit(
         source,
         destination,
         round_trip_latency_limit,
         one_way_data_rate,
-        current_network_usage_);
+        current_network_usage_,
+        partitioner);
     if (circuit != null) {
       foreach (OrientedLink link in circuit.forward.links) {
         current_network_usage_.UseLinks(
@@ -191,12 +195,14 @@ namespace σκοπός {
       IList<RACommNode> destinations,
       double latency_limit,
       double data_rate,
+      NetworkPartitioner partitioner,
       out Channel[] channels) {
     return FindChannels(source,
                         destinations,
                         latency_limit,
                         data_rate,
                         NetworkUsage.None,
+                        partitioner,
                         out channels);
   }
 
@@ -205,6 +211,7 @@ namespace σκοπός {
       IList<RACommNode> destinations,
       double latency_limit,
       double data_rate,
+      NetworkPartitioner partitioner,
       out Channel[] channels,
       Connection connection) {
     PointToMultipointAvailability availability = FindChannels(
@@ -213,6 +220,7 @@ namespace σκοπός {
         latency_limit,
         data_rate,
         current_network_usage_,
+        partitioner,
         out channels);
     if (availability != Unavailable) {
       var links_by_tx_antenna =
@@ -230,12 +238,14 @@ namespace σκοπός {
                               RACommNode destination,
                               double round_trip_latency_limit,
                               double one_way_data_rate,
-                              NetworkUsage usage) {
+                              NetworkUsage usage,
+                              NetworkPartitioner partitioner) {
     if (FindChannels(source,
                      new[]{destination},
                      round_trip_latency_limit,
                      one_way_data_rate,
                      usage,
+                     partitioner,
                      out Channel[] forward) == Unavailable) {
       return null;
     }
@@ -249,6 +259,7 @@ namespace σκοπός {
                      round_trip_latency_limit - forward[0].latency,
                      one_way_data_rate,
                      usage_with_forward_channel,
+                     partitioner,
                      out Channel[] backward) == Unavailable) {
       return null;
     }
@@ -261,6 +272,7 @@ namespace σκοπός {
       double latency_limit,
       double data_rate,
       NetworkUsage usage,
+      NetworkPartitioner partitioner,
       out Channel[] channels) {
     const double c = 299792458;
     // TODO(egg): consider using the stock intrusive data structure.
@@ -269,23 +281,27 @@ namespace σκοπός {
     var boundary = new PriorityQueue<RACommNode, double>();
     var interior = new HashSet<RACommNode>();
 
+    channels = new Channel[destinations.Count];
+    int num_channels_to_find = destinations.Where(x => !partitioner.disconnected_partition_.Contains(x) && partitioner.node_to_partition_map_[source] == partitioner.node_to_partition_map_[x]).Count();
+    if (partitioner.disconnected_partition_.Contains(source) || num_channels_to_find == 0) {
+        return PointToMultipointAvailability.Unavailable;
+    }
     // Dijkstra’s algorithm without DecreaseKey.
     distances[source] = 0;
     boundary.Enqueue(source, 0);
     previous[source] = null;
     int rx_found = 0;
-    channels = new Channel[destinations.Count];
     bool is_point_to_multipoint = destinations.Count > 1;
     while (boundary.TryDequeue(out RACommNode tx, out double tx_distance)) {
       if (tx_distance != distances[tx]) {
         // We have already considered `tx` through a shorter path.
         continue;
       }
+      int i = destinations.IndexOf(tx);
       if (tx_distance > latency_limit * c) {
         // We have run out of latency, no need to keep searching.
         return rx_found == 0 ? Unavailable : Partial;
-      } else if (destinations.Contains(tx)) {
-        int i = destinations.IndexOf(tx);
+      } else if (i > -1) {
         channels[i] = new Channel();
         for (OrientedLink link = previous[tx];
              link != null;
@@ -295,7 +311,7 @@ namespace σκοπός {
         channels[i].links.Reverse();
         channels[i].latency = tx_distance / c;
         ++rx_found;
-        if (rx_found == channels.Length) {
+        if (rx_found == num_channels_to_find) {
           return PointToMultipointAvailability.Available;
         }
       }
