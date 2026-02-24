@@ -503,13 +503,12 @@ namespace σκοπός {
       double data_rate,
       NetworkUsage usage,
       out Channel channel) {
-    if (relay_vessels_.Count == 0) FindRelays();
     const double c = 299792458;
     double latency_distance = c * latency_limit;
     channel = new Channel();
     double best_distance = latency_distance;
-    foreach (RACommNode relay in relay_vessels_) {
-      if (source.TryGetValue(relay, out var inbound) && relay.TryGetValue(destination, out var outbound)) {
+    foreach (RACommNode relay in source.Keys) {
+      if (relay.TryGetValue(destination, out var outbound)) {
         OrientedLink outbound_link = OrientedLink.Get(this, from: relay, to: destination);
         if (outbound_link.max_data_rate < data_rate) {
           continue;
@@ -547,22 +546,11 @@ namespace σκοπός {
     }
   }
 
-  public void FindRelays() {
-    relay_vessels_.Clear();
-    var home_body = FlightGlobals.GetHomeBody();
-    foreach (RACommNode node in (CommNet.CommNetNetwork.Instance?.CommNet as RACommNetwork).Nodes) {
-      if (node.ParentVessel?.mainBody == home_body && node.RAAntennaList.Any(ra => ra.RFBand.ChannelWidth >= 100e6)) { 
-        // Vessels that orbit around Earth and have a wideband antenna
-        relay_vessels_.Add(node); 
-      }
-    }
-  }
-
-  public class APSPHeuristic {
+  public class RoutingPrecompute {
     // All-pairs shortest paths
     //private ProfilerMarker profiler = new ProfilerMarker("Floyd-Warshall");
 
-    public void FindNodes(double bandwidth_filter = 1e6) {
+    public void FindNodes(double bandwidth_filter = 1e2) {
       apsp_watch_.Start();
       var home_body = FlightGlobals.GetHomeBody();
       nodes.Clear();
@@ -955,7 +943,7 @@ namespace σκοπός {
   // antennas.  Neither their transmitted power nor their spectrum get used up.
   private HashSet<RACommNode> multiple_tracking_ = new HashSet<RACommNode>();
 
-  public readonly APSPHeuristic heuristic = new APSPHeuristic();
+  public readonly RoutingPrecompute heuristic = new RoutingPrecompute();
 }
 
 }

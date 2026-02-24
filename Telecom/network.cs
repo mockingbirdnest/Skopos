@@ -189,9 +189,6 @@ namespace σκοπός {
         return;
       }
       routing_.prefer_one_bounce = Telecom.Instance.prefer_one_bounce;
-      if (routing_.prefer_one_bounce) {
-        routing_.FindRelays();
-      }
       routing_.use_apsp_heuristic = Telecom.Instance.use_apsp_heuristic;
       if (routing_.use_apsp_heuristic) {
         routing_.heuristic.InvalidateCache();
