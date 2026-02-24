@@ -164,9 +164,7 @@ namespace σκοπός {
       UnityEngine.Profiling.Profiler.BeginSample("Skopos.Network.FixedUpdate");
       var metrics = Telecom.Instance.runtimeMetrics_;
       refresh_watch_.Start();
-      if (Telecom.Instance.one_hop_optimize) {
-        routing_.FindRelays();
-      }
+      routing_.heuristic.InvalidateCache();
       UpdateConnections();
       foreach (RealAntennaDigital antenna in routing_.usage.Transmitters()) {
         if ((antenna?.ParentNode as RACommNode).ParentVessel is Vessel vessel) {
@@ -189,6 +187,14 @@ namespace σκοπός {
       if (network == null) {
         Telecom.Log("No RA comm network");
         return;
+      }
+      routing_.prefer_one_bounce = Telecom.Instance.prefer_one_bounce;
+      if (routing_.prefer_one_bounce) {
+        routing_.FindRelays();
+      }
+      routing_.use_apsp_heuristic = Telecom.Instance.use_apsp_heuristic;
+      if (routing_.use_apsp_heuristic) {
+        routing_.heuristic.InvalidateCache();
       }
       routing_.Reset(
           from station in tx_only_ select station.Comm,

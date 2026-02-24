@@ -449,6 +449,8 @@ public class RoutingTest {
     antenna_config.AddValue("AMWTemp", "33");
     antenna.LoadFromConfigNode(antenna_config);
     node.RAAntennaList.Add(antenna);
+    nodes.Add(node);
+    routing_.heuristic.OverrideNodes(nodes);
     return node;
   }
 
@@ -472,6 +474,8 @@ public class RoutingTest {
     ra_link.RevDataRate = backward_data_rate;
     return ra_link;
   }
+
+  private List<RACommNode> nodes = new List<RACommNode>();
 
   private Routing routing_ = new Routing();
 }

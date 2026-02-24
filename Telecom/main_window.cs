@@ -37,12 +37,26 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
 
       using (new UnityEngine.GUILayout.HorizontalScope()) {
         telecom_.one_hop_optimize = UnityEngine.GUILayout.Toggle(telecom_.one_hop_optimize, "Prefer one-bounce connections");
+        telecom_.network.routing_.prefer_one_bounce = telecom_.prefer_one_bounce = UnityEngine.GUILayout.Toggle(telecom_.prefer_one_bounce, "Prefer one-bounce connections <color=orange> >/color>");
+      }
+
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
+        telecom_.network.routing_.prefer_one_bounce = telecom_.prefer_one_bounce = UnityEngine.GUILayout.Toggle(telecom_.prefer_one_bounce, "Prefer one-bounce connections");
+      }
+
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
+        telecom_.network.routing_.use_apsp_heuristic = telecom_.use_apsp_heuristic = UnityEngine.GUILayout.Toggle(telecom_.use_apsp_heuristic, "Use A* search with Floyd-Warshall heuristic");
+        // Why two separate locations? Because Routing needs a local copy for testing, but I can only preserve fields in Telecom. So Telecom's copy is authoritative, and it copies it over to Routing.
+        if (telecom_.use_apsp_heuristic) {
+          UnityEngine.GUILayout.Label($"APSP Runs: {telecom_.network.routing_.heuristic?.metrics.apsp_runs_}");
+          UnityEngine.GUILayout.Label($"Average APSP Runtime: {telecom_.network.routing_.heuristic?.metrics.AverageAPSPRuntime:F2} ms");
+        }
       }
 
       using (new UnityEngine.GUILayout.HorizontalScope()) {
         UnityEngine.GUILayout.Label($"Contracted connections: {telecom_.network.contracted_connections.Count}");
         UnityEngine.GUILayout.Label($"Fixed Updates: {telecom_.runtimeMetrics_.num_fixed_update_iterations_}");
-        UnityEngine.GUILayout.Label($"Average Runtime: {telecom_.runtimeMetrics_.AverageFixedUpdateRuntime:F2} ms");
+        UnityEngine.GUILayout.Label($"Average Total Runtime: {telecom_.runtimeMetrics_.AverageFixedUpdateRuntime:F2} ms");
       }
 
       var inspected_connections = connection_inspectors_.Keys.ToArray();
