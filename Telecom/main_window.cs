@@ -36,11 +36,6 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
       }
 
       using (new UnityEngine.GUILayout.HorizontalScope()) {
-        telecom_.one_hop_optimize = UnityEngine.GUILayout.Toggle(telecom_.one_hop_optimize, "Prefer one-bounce connections");
-        telecom_.network.routing_.prefer_one_bounce = telecom_.prefer_one_bounce = UnityEngine.GUILayout.Toggle(telecom_.prefer_one_bounce, "Prefer one-bounce connections <color=orange> >/color>");
-      }
-
-      using (new UnityEngine.GUILayout.HorizontalScope()) {
         telecom_.network.routing_.prefer_one_bounce = telecom_.prefer_one_bounce = UnityEngine.GUILayout.Toggle(telecom_.prefer_one_bounce, "Prefer one-bounce connections");
       }
 
