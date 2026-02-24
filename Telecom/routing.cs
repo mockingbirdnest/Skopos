@@ -255,7 +255,7 @@ namespace σκοπός {
     }
     return new Circuit(forward[0], backward[0]);
   }
-    
+
   private PointToMultipointAvailability FindChannels(
       RACommNode source,
       IList<RACommNode> destinations,
@@ -291,7 +291,7 @@ namespace σκοπός {
     var previous = new Dictionary<RACommNode, OrientedLink>();
     var boundary = new PriorityQueue<RACommNode, double>();
     var interior = new HashSet<RACommNode>();
-    
+
     // Dijkstra’s algorithm without DecreaseKey.
     distances[source] = 0;
     boundary.Enqueue(source, 0);

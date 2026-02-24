@@ -7,24 +7,24 @@ using System.Linq;
 namespace σκοπός {
   public class Network {
     static ConfigNode GetStationDefinition(string name) {
-        foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
-          foreach (var definition in block.config.GetNodes("station")) {
+      foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
+        foreach (var definition in block.config.GetNodes("station")) {
           if (definition.GetValue("name") == name) {
-              return definition;
-            }
+            return definition;
           }
         }
+      }
       throw new KeyNotFoundException($"No definition for station {name}");
     }
 
     static ConfigNode GetConnectionDefinition(string name) {
-        foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
-          foreach (var definition in block.config.GetNodes("connection")) {
+      foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
+        foreach (var definition in block.config.GetNodes("connection")) {
           if (definition.GetValue("name") == name) {
-              return definition;
-            }
+            return definition;
           }
         }
+      }
       throw new KeyNotFoundException($"No definition for connection {name}");
     }
 
