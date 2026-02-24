@@ -299,6 +299,13 @@ namespace σκοπός {
     int rx_found = 0;
     channels = new Channel[destinations.Count];
     bool is_point_to_multipoint = destinations.Count > 1;
+
+    double[] destination_distances = new double[destinations.Count];
+
+    for (int i = destinations.Count - 1; i >= 0; --i) {
+      destination_distances[i] = double.PositiveInfinity;
+    }
+
     while (boundary.TryDequeue(out RACommNode tx, out double tx_distance)) {
       if (tx_distance != distances[tx]) {
         // We have already considered `tx` through a shorter path.
@@ -336,23 +343,30 @@ namespace σκοπός {
           continue;
         }
 
-        var link = OrientedLink.Get(this, from: tx, to: rx);
-        if (link.max_data_rate < data_rate) { // Best-case data rate check.
-          continue;
-        }
-
-        double tentative_distance = distances[tx] + link.length; 
+        double tentative_distance = distances[tx] + (tx.precisePosition - rx.precisePosition).magnitude; 
         if (tentative_distance > latency_distance || 
             (distances.TryGetValue(rx, out double d) &&
             tentative_distance > d)) { // Latency optimality check
           continue;
         }
+
+        var link = OrientedLink.Get(this, from: tx, to: rx);
+        if (link.max_data_rate < data_rate) { // Best-case data rate check.
+          continue;
+        }
+        
         if (!link.CheckCapacityWithUsage(usage, data_rate)) {
           continue;
         }
         distances[rx] = tentative_distance;
         previous[rx] = link;
         boundary.Enqueue(rx, tentative_distance);
+        int ind = destinations.IndexOf(rx);
+        if (ind != -1) {
+          destination_distances[ind] = tentative_distance;
+          double worst_dist = destination_distances.Max();
+          if (latency_distance > worst_dist) latency_distance = worst_dist;
+        }
       }
     }
     return rx_found == 0 ? Unavailable : Partial;
