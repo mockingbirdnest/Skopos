@@ -137,6 +137,7 @@ namespace σκοπός {
     OrientedLink.ReturnLinks(this);
     links_.Clear();
     current_network_usage_.Clear();
+    heuristic.InvalidateCache();
 
     tx_only_ = new HashSet<RACommNode>(tx_only);
     rx_only_ = new HashSet<RACommNode>(rx_only);
@@ -456,8 +457,8 @@ namespace σκοπός {
         previous[rx] = link;
         boundary.Enqueue(rx, tentative_distance);
         if (rx == destination) latency_distance = tentative_distance; // Don't consider any links with no chance of improving our current solution.
-        //metrics.apsp_links_considered++;
-      }
+          //metrics.apsp_links_considered++;
+        }
     }
     channel = null;
     return PointToMultipointAvailability.Unavailable;
@@ -474,7 +475,8 @@ namespace σκοπός {
     double latency_distance = c * latency_limit;
     heuristic.GenerateShortestPaths();
     channel = new Channel();
-    if (heuristic.GetHeuristicDistance(source, destination) > latency_distance) {
+    double tx_distance = heuristic.GetHeuristicDistance(source, destination);
+    if (tx_distance > latency_distance) {
       return PointToMultipointAvailability.Unavailable;
     }
     RACommNode prev = source;
@@ -491,6 +493,7 @@ namespace σκοπός {
         return PointToMultipointAvailability.Unavailable;
       }
       channel.links.Add(link);
+      channel.latency = tx_distance / c;
       prev = node;
     }
     return PointToMultipointAvailability.Available;
@@ -576,7 +579,7 @@ namespace σκοπός {
       }
     }
 
-    public void GenerateShortestPaths(double minimum_link_data_rate = 1e3) {
+    public void GenerateShortestPaths(double minimum_link_data_rate = 1e2) {
       if (cached) return;
       if (nodes.Count == 0) FindNodes();
       //profiler.Begin();
@@ -931,8 +934,6 @@ namespace σκοπός {
 
   private readonly Dictionary<(RACommNode, RACommNode), OrientedLink> links_ =
       new Dictionary<(RACommNode, RACommNode), OrientedLink>();
-
-  private readonly List<RACommNode> relay_vessels_ = new List<RACommNode>();
   
   // Stations only capable of transmitting.
   private HashSet<RACommNode> tx_only_ = new HashSet<RACommNode>();
