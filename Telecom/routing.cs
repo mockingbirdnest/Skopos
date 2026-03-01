@@ -457,8 +457,8 @@ namespace σκοπός {
         previous[rx] = link;
         boundary.Enqueue(rx, tentative_distance);
         if (rx == destination) latency_distance = tentative_distance; // Don't consider any links with no chance of improving our current solution.
-          //metrics.apsp_links_considered++;
-        }
+        //metrics.apsp_links_considered++;
+      }
     }
     channel = null;
     return PointToMultipointAvailability.Unavailable;
