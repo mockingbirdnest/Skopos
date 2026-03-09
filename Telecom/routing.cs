@@ -264,13 +264,6 @@ namespace σκοπός {
       double data_rate,
       NetworkUsage usage,
       out Channel[] channels) {
-    if (prefer_one_bounce && destinations.Count == 1) {
-      Channel ans;
-      if (FindChannelsOneHop(source, destinations[0], latency_limit, data_rate, usage, out ans) == PointToMultipointAvailability.Available) {
-        channels = new Channel[1] {ans};
-        return PointToMultipointAvailability.Available;
-      }
-    }
     if (use_apsp_heuristic && destinations.Count == 1) {
       channels = new Channel[1] {null};
       return FindChannelsAPSP(source, destinations[0], latency_limit, data_rate, usage, out channels[0]);
@@ -382,11 +375,11 @@ namespace σκοπός {
       out Channel channel) {
 
     if (TryShortestPath(source, destination, latency_limit, data_rate, usage, out Channel ans) == PointToMultipointAvailability.Available) {
-      channel = ans;
-      return PointToMultipointAvailability.Available;
-    }
+        channel = ans;
+        return PointToMultipointAvailability.Available;
+      }
 
-    const double c = 299792458;
+      const double c = 299792458;
     double latency_distance = c * latency_limit;
     // TODO(egg): consider using the stock intrusive data structure.
     var distances = new Dictionary<RACommNode, double>();
@@ -499,61 +492,11 @@ namespace σκοπός {
     return PointToMultipointAvailability.Available;
   }
 
-  private PointToMultipointAvailability FindChannelsOneHop(
-      RACommNode source,
-      RACommNode destination,
-      double latency_limit,
-      double data_rate,
-      NetworkUsage usage,
-      out Channel channel) {
-    const double c = 299792458;
-    double latency_distance = c * latency_limit;
-    channel = new Channel();
-    double best_distance = latency_distance;
-    foreach (RACommNode relay in source.Keys) {
-      if (relay.TryGetValue(destination, out var outbound)) {
-        OrientedLink outbound_link = OrientedLink.Get(this, from: relay, to: destination);
-        if (outbound_link.max_data_rate < data_rate) {
-          continue;
-        }
-
-        OrientedLink inbound_link = OrientedLink.Get(this, from: source, to: relay);
-        if (inbound_link.max_data_rate < data_rate) {
-          continue;
-        }
-
-        double distance = outbound_link.length + inbound_link.length;
-        if (distance > best_distance) {
-          continue;
-        }
-
-        if (!outbound_link.CheckCapacityWithUsage(usage, data_rate)) {
-          continue;
-        }
-
-        if (!inbound_link.CheckCapacityWithUsage(usage, data_rate)) {
-          continue;
-        }
-
-        best_distance = distance;
-        channel.links.Clear();
-        channel.links.Add(inbound_link);
-        channel.links.Add(outbound_link);
-      }
-    }
-    if (best_distance < latency_distance) {
-      return PointToMultipointAvailability.Available;
-    } else {
-      channel = null;
-      return PointToMultipointAvailability.Unavailable;
-    }
-  }
-
   public class RoutingPrecompute {
     // All-pairs shortest paths
     //private ProfilerMarker profiler = new ProfilerMarker("Floyd-Warshall");
 
-    public void FindNodes(double bandwidth_filter = 1e2) {
+    public void FindNodes(double bandwidth_filter = 1e6) {
       apsp_watch_.Start();
       var home_body = FlightGlobals.GetHomeBody();
       nodes.Clear();
@@ -579,7 +522,7 @@ namespace σκοπός {
       }
     }
 
-    public void GenerateShortestPaths(double minimum_link_data_rate = 1e2) {
+    public void GenerateShortestPaths(double minimum_link_data_rate = 1e3) {
       if (cached) return;
       if (nodes.Count == 0) FindNodes();
       //profiler.Begin();
@@ -928,8 +871,6 @@ namespace σκοπός {
 
     private Routing routing_;
   }
-
-  public bool prefer_one_bounce = false;
   
   public bool use_apsp_heuristic = true;
 

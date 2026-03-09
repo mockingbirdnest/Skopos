@@ -36,10 +36,6 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
       }
 
       using (new UnityEngine.GUILayout.HorizontalScope()) {
-        telecom_.network.routing_.prefer_one_bounce = telecom_.prefer_one_bounce = UnityEngine.GUILayout.Toggle(telecom_.prefer_one_bounce, "Prefer one-bounce connections");
-      }
-
-      using (new UnityEngine.GUILayout.HorizontalScope()) {
         telecom_.network.routing_.use_apsp_heuristic = telecom_.use_apsp_heuristic = UnityEngine.GUILayout.Toggle(telecom_.use_apsp_heuristic, "Use A* search with Floyd-Warshall heuristic");
         // Why two separate locations? Because Routing needs a local copy for testing, but I can only preserve fields in Telecom. So Telecom's copy is authoritative, and it copies it over to Routing.
         if (telecom_.use_apsp_heuristic) {
