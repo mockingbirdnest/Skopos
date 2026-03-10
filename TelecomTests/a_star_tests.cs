@@ -70,9 +70,11 @@ namespace σκοπός {
       filler_antenna.AddValue("AMWTemp", "80"); // Taken from Yuzhno-Sakhalinsk. Should be RX only, but whatever.
 
       routing_astar = new Routing();
+      routing_astar.prefer_one_bounce = false;
       routing_astar.use_apsp_heuristic = true;
 
       routing_dijkstras = new Routing();
+      routing_dijkstras.prefer_one_bounce = false;
       routing_dijkstras.use_apsp_heuristic = false;
     }
 
@@ -215,7 +217,7 @@ namespace σκοπός {
           double link_rate = 4e9;
           bool is_intersatellite = uname.StartsWith("SAT_") && vname.StartsWith("SAT_");
           if (is_intersatellite) { // Awful workaround, but whatever.
-            link_rate /= 4; // Relaying is expensive.
+            link_rate /= 16; // Relaying is expensive.
           }
           while (distance > base_distance) {
             distance /= 2;
@@ -421,7 +423,7 @@ namespace σκοπός {
       // Approximate the Iridium network.
       for (int i = 0; i < 6; ++i) {
         for (int j = 0; j < 11; ++j) {
-          MakeNodeOrbit($"iridium-{i}-{j}", period: 6000, ecc: i * 0.00001, inc_deg: 86.4, argp_deg: 0, lan_deg: i * 30, mean_anomaly_deg: j * 360.0 / 11);
+          MakeNodeOrbit($"iridium-{i}-{j}", period: 6000, ecc: 0, inc_deg: 86.4, argp_deg: 0, lan_deg: i * 30, mean_anomaly_deg: j * 360.0 / 11);
         }
       }
       PrecomputeLinkAndTest(100000); // This doesn't approximate intersatellite links very well, since they eat up bandwidth on the same antenna everywhere.
@@ -433,7 +435,7 @@ namespace σκοπός {
       // Approximate the Iridium network.
       for (int i = 0; i < 6; ++i) {
         for (int j = 0; j < 11; ++j) {
-          MakeNodeOrbit($"iridium-{i}-{j}", period: 6000, ecc: i * 0.00001, inc_deg: 86.4, argp_deg: 0, lan_deg: i * 30, mean_anomaly_deg: j * 360.0 / 11);
+          MakeNodeOrbit($"iridium-{i}-{j}", period: 6000, ecc: 0, inc_deg: 86.4, argp_deg: 0, lan_deg: i * 30, mean_anomaly_deg: j * 360.0 / 11);
         }
       }
       PrecomputeLinkAndTest(2000); // Enough to perfectly cover a decent area.
@@ -444,7 +446,7 @@ namespace σκοπός {
       LoadTestStations();
       // Approximate the O3b network.
       for (int i = 0; i < 12; ++i) {
-        MakeNodeOrbit($"o3b-{i}", period: 287.9 * 60, ecc: i * 0.00001, inc_deg: 0, argp_deg: 0, lan_deg: 0, mean_anomaly_deg: i * 360.0 / 12); 
+        MakeNodeOrbit($"o3b-{i}", period: 287.9 * 60, ecc: 0, inc_deg: 0, argp_deg: 0, lan_deg: 0, mean_anomaly_deg: i * 360.0 / 12);
       }
       PrecomputeLinkAndTest(1000000);
     }
@@ -454,8 +456,7 @@ namespace σκοπός {
       LoadTestStations();
       // Approximate the O3b network.
       for (int i = 0; i < 12; ++i) {
-        MakeNodeOrbit($"o3b-{i}", period: 287.9 * 60, ecc: i * 0.00001, inc_deg: 0, argp_deg: 0, lan_deg: 0, mean_anomaly_deg: i * 360.0 / 12); 
-        // Let's just. wiggle the nodes a bit so there's less ties
+        MakeNodeOrbit($"o3b-{i}", period: 287.9 * 60, ecc: 0, inc_deg: 0, argp_deg: 0, lan_deg: 0, mean_anomaly_deg: i * 360.0 / 12);
       }
       PrecomputeLinkAndTest(8000);
     }

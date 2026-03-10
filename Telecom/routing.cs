@@ -544,8 +544,8 @@ namespace σκοπός {
         foreach (RACommNode rx in tx.Keys) {
           if (ordering.TryGetValue(rx, out int j)) {
             RACommLink ra_link = (RACommLink) tx[rx];
-            var data_rate = (ra_link.a == tx) ? ra_link.FwdDataRate : ra_link.RevDataRate;
-            if (data_rate < minimum_link_data_rate) continue;
+            if (ra_link.a == tx && ra_link.FwdDataRate < minimum_link_data_rate) continue;
+            else if (ra_link.b == tx && ra_link.RevDataRate < minimum_link_data_rate) continue;
             shortest_path[i, j] = (tx.precisePosition - rx.precisePosition).magnitude; 
             path_forwardtrace[i, j] = j;
           }
