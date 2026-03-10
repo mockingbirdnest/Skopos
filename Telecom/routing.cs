@@ -55,12 +55,21 @@ namespace σκοπός {
 
       public void AddUsages(SingleUsage[] broadcast) {
         power += (from usage in broadcast select usage.power).Max();
-        usages_.Add(broadcast);
+        if (!(usages_ is null)) { // If this fails, we are a weak clone and should not bother tracking usage arrays.
+          usages_.Add(broadcast);
+        } 
       }
 
       public PowerBreakdown Clone() {
         return new PowerBreakdown{
           usages_ = usages.Select(usages => usages.ToArray()).ToList(),
+          power = power,
+        };
+      }
+
+      public PowerBreakdown WeakClone() {
+        return new PowerBreakdown{
+          usages_ = null,
           power = power,
         };
       }
@@ -82,12 +91,21 @@ namespace σκοπός {
 
       public void AddUsages(SingleUsage[] usage) {
         spectrum += usage[0].spectrum;
-        usages_.Add(usage);
+        if (!(usages_ is null)) { // If this fails, we are a weak clone and should not bother tracking usage arrays.
+          usages_.Add(usage);
+        }
       }
 
       public SpectrumBreakdown Clone() {
         return new SpectrumBreakdown{
           usages_ = usages.Select(usages => usages.ToArray()).ToList(),
+          spectrum = spectrum
+        };
+      }
+
+      public SpectrumBreakdown WeakClone() {
+        return new SpectrumBreakdown{
+          usages_ = null,
           spectrum = spectrum
         };
       }
@@ -351,12 +369,12 @@ namespace σκοπός {
       if (other is RoutingNetworkUsage nontrival) {
         tx_power_usage_ = nontrival.tx_power_usage_.ToDictionary(
             entry => entry.Key,
-            entry => entry.Value.Clone());
+            entry => entry.Value.WeakClone());
         spectrum_usage_ = nontrival.spectrum_usage_.ToDictionary(
             entry => entry.Key,
-            entry => entry.Value.Clone());
+            entry => entry.Value.WeakClone());
       }
-    }
+    } // Weakly clone (without usage details)
 
     public void Clear() {
       tx_power_usage_.Clear();
