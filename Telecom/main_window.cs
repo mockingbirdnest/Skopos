@@ -8,6 +8,7 @@ namespace σκοπός {
 internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRenderer {
   public MainWindow(Telecom telecom) : base(telecom) {
     telecom_ = telecom;
+    stats_ = new RoutingStatistics(telecom);
   }
 
   public bool show_network { get; private set; } = false;
@@ -42,10 +43,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
       using (new UnityEngine.GUILayout.HorizontalScope()) {
         telecom_.network.routing_.use_apsp_heuristic = telecom_.use_apsp_heuristic = UnityEngine.GUILayout.Toggle(telecom_.use_apsp_heuristic, "Use A* search with Floyd-Warshall heuristic");
         // Why two separate locations? Because Routing needs a local copy for testing, but I can only preserve fields in Telecom. So Telecom's copy is authoritative, and it copies it over to Routing.
-        if (telecom_.use_apsp_heuristic) {
-          UnityEngine.GUILayout.Label($"APSP Runs: {telecom_.network.routing_.heuristic?.metrics.apsp_runs_}");
-          UnityEngine.GUILayout.Label($"Average APSP Runtime: {telecom_.network.routing_.heuristic?.metrics.AverageAPSPRuntime:F2} ms");
-        }
+        stats_.RenderButton();
       }
 
       using (new UnityEngine.GUILayout.HorizontalScope()) {
@@ -163,6 +161,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
     antenna_inspectors_;
 
   private Telecom telecom_;
+  private RoutingStatistics stats_;
   private string alert_rate_limit_text;
   private readonly Dictionary<Contracts.Contract, bool> open_contracts_ =
       new Dictionary<Contracts.Contract, bool>();

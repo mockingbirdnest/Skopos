@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using CommNet.Network;
 using RealAntennas;
@@ -129,6 +130,12 @@ namespace σκοπός {
 
   public Routing() {
     current_network_usage_ = new RoutingNetworkUsage(this);
+#if !DEBUG
+    Telecom.Instance.RegisterFixedUpdateMetric(one_hop_metric);
+    Telecom.Instance.RegisterFixedUpdateMetric(a_star_metric);
+    Telecom.Instance.RegisterFixedUpdateMetric(shortest_path_metric);
+    Telecom.Instance.RegisterFixedUpdateMetric(dijkstras_metric);
+#endif
   }
 
   public void Reset(IEnumerable<RACommNode> tx_only,
@@ -285,6 +292,7 @@ namespace σκοπός {
       double data_rate,
       NetworkUsage usage,
       out Channel[] channels) {
+    dijkstras_metric.Start();
     const double c = 299792458;
     double latency_distance = c * latency_limit;
     // TODO(egg): consider using the stock intrusive data structure.
@@ -312,10 +320,7 @@ namespace σκοπός {
         // We have already considered `tx` through a shorter path.
         continue;
       }
-      if (tx_distance > latency_limit * c) {
-        // We have run out of latency, no need to keep searching.
-        return rx_found == 0 ? Unavailable : Partial;
-      } else if (destinations.Contains(tx)) {
+      if (destinations.Contains(tx)) {
         int i = destinations.IndexOf(tx);
         channels[i] = new Channel();
         for (OrientedLink link = previous[tx];
@@ -327,9 +332,14 @@ namespace σκοπός {
         channels[i].latency = tx_distance / c;
         ++rx_found;
         if (rx_found == channels.Length) {
+          dijkstras_metric.StopSuccess();
           return PointToMultipointAvailability.Available;
         }
-      }
+      } else if (tx_distance > latency_distance) {
+        // We have run out of latency, no need to keep searching.
+        dijkstras_metric.StopFailure();
+        return rx_found == 0 ? Unavailable : Partial;
+      } 
 
       interior.Add(tx);
 
@@ -370,6 +380,7 @@ namespace σκοπός {
         }
       }
     }
+    dijkstras_metric.StopFailure();
     return rx_found == 0 ? Unavailable : Partial;
   }
 
@@ -380,12 +391,14 @@ namespace σκοπός {
       double data_rate,
       NetworkUsage usage,
       out Channel channel) {
-
+    shortest_path_metric.Start();
     if (TryShortestPath(source, destination, latency_limit, data_rate, usage, out Channel ans) == PointToMultipointAvailability.Available) {
       channel = ans;
+      shortest_path_metric.StopSuccess();
       return PointToMultipointAvailability.Available;
     }
-
+    shortest_path_metric.StopFailure();
+    a_star_metric.Start();
     const double c = 299792458;
     double latency_distance = c * latency_limit;
     // TODO(egg): consider using the stock intrusive data structure.
@@ -393,8 +406,9 @@ namespace σκοπός {
     var previous = new Dictionary<RACommNode, OrientedLink>();
     var boundary = new PriorityQueue<RACommNode, double>();
     var interior = new HashSet<RACommNode>();
-    
+    a_star_metric.Pause();
     heuristic.GenerateShortestPaths();
+    a_star_metric.Resume();
     //var metrics = Telecom.Instance.runtimeMetrics_;
     //metrics.apsp_routes++;
     // Dijkstra’s algorithm without DecreaseKey.
@@ -416,10 +430,12 @@ namespace σκοπός {
         }
         channel.links.Reverse();
         channel.latency = tx_distance / c;
+        a_star_metric.StopSuccess();
         return PointToMultipointAvailability.Available;
       } else if (tx_distance > latency_distance) {
         // We have run out of latency, no need to keep searching.
         channel = null;
+        a_star_metric.StopFailure();
         return PointToMultipointAvailability.Unavailable;
       } 
 
@@ -461,6 +477,7 @@ namespace σκοπός {
       }
     }
     channel = null;
+    a_star_metric.StopFailure();
     return PointToMultipointAvailability.Unavailable;
   }
 
@@ -473,7 +490,9 @@ namespace σκοπός {
       out Channel channel) {
     const double c = 299792458;
     double latency_distance = c * latency_limit;
+    shortest_path_metric.Pause();
     heuristic.GenerateShortestPaths();
+    shortest_path_metric.Resume();
     channel = new Channel();
     double tx_distance = heuristic.GetHeuristicDistance(source, destination);
     if (tx_distance > latency_distance) {
@@ -506,6 +525,7 @@ namespace σκοπός {
       double data_rate,
       NetworkUsage usage,
       out Channel channel) {
+    one_hop_metric.Start();
     const double c = 299792458;
     double latency_distance = c * latency_limit;
     channel = new Channel();
@@ -542,9 +562,11 @@ namespace σκοπός {
       }
     }
     if (best_distance < latency_distance) {
+      one_hop_metric.StopSuccess();
       return PointToMultipointAvailability.Available;
     } else {
       channel = null;
+      one_hop_metric.StopFailure();
       return PointToMultipointAvailability.Unavailable;
     }
   }
@@ -553,8 +575,11 @@ namespace σκοπός {
     // All-pairs shortest paths
     //private ProfilerMarker profiler = new ProfilerMarker("Floyd-Warshall");
 
+    public RoutingPrecompute() {
+      Telecom.Instance.RegisterFixedUpdateMetric(apsp_metric);
+    }
+
     public void FindNodes(double bandwidth_filter = 1e2) {
-      apsp_watch_.Start();
       var home_body = FlightGlobals.GetHomeBody();
       nodes.Clear();
 
@@ -568,7 +593,6 @@ namespace σκοπός {
           nodes.Add(node);
         }
       }
-      apsp_watch_.Stop();
     }
 
     public void OverrideNodes(List<RACommNode> nodes) {
@@ -581,11 +605,11 @@ namespace σκοπός {
 
     public void GenerateShortestPaths(double minimum_link_data_rate = 1e2) {
       if (cached) return;
+      apsp_metric.Start();
       if (nodes.Count == 0) FindNodes();
       //profiler.Begin();
       
       //Telecom.Log($"Found {nodes.Count} relevant stations and vessels.");
-      apsp_watch_.Start();
 
       int N = nodes.Count;
       shortest_path = new double[N, N];
@@ -621,10 +645,8 @@ namespace σκοπός {
         }
       }
       cached = true;
-      apsp_watch_.Stop();
-      metrics.apsp_runtime_ = apsp_watch_.ElapsedMilliseconds;
-      metrics.apsp_runs_++;
       //profiler.End();
+      apsp_metric.StopSuccess();
     }
     public double GetHeuristicDistance(RACommNode tx, RACommNode rx) {
       if (ordering.TryGetValue(tx, out int i) && ordering.TryGetValue(rx, out int j)) {
@@ -662,14 +684,7 @@ namespace σκοπός {
     private double[,] shortest_path;
     private int[,] path_forwardtrace;
     private bool cached = false;
-    public readonly APSPMetrics metrics = new APSPMetrics();
-    private readonly System.Diagnostics.Stopwatch apsp_watch_ = new System.Diagnostics.Stopwatch();
-    
-    public class APSPMetrics {
-      public int apsp_runs_ = 0;
-      public double apsp_runtime_ = 0;
-      public double AverageAPSPRuntime => apsp_runtime_ / apsp_runs_;
-    }
+    internal FixedUpdateMetric apsp_metric = new FixedUpdateMetric("apsp");
   }
 
   private class LinkUsage {
@@ -948,6 +963,10 @@ namespace σκοπός {
   private HashSet<RACommNode> multiple_tracking_ = new HashSet<RACommNode>();
 
   public readonly RoutingPrecompute heuristic = new RoutingPrecompute();
+  internal FixedUpdateMetric one_hop_metric = new FixedUpdateMetric("one-hop");
+  internal FixedUpdateMetric a_star_metric = new FixedUpdateMetric("astar");
+  internal FixedUpdateMetric shortest_path_metric = new FixedUpdateMetric("shortest-path");
+  internal FixedUpdateMetric dijkstras_metric = new FixedUpdateMetric("dijkstras");
 }
 
 }

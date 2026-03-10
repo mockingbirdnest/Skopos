@@ -110,6 +110,10 @@ namespace σκοπός {
       on_contracts_changed_cr_running = false;
     }
 
+    internal void RegisterFixedUpdateMetric(FixedUpdateMetric metric) {
+      registered_metrics.Add(metric);
+    }
+
     private void OnGUI() {
       if (!enabled) return;
       if (KSP.UI.Screens.ApplicationLauncher.Ready && toolbar_button_ == null) {
@@ -180,6 +184,9 @@ namespace σκοπός {
         // Time does not advance in the VAB, but after a revert, it is incorrectly stuck in the past.
         ut_ = Planetarium.GetUniversalTime();
       }
+      foreach (FixedUpdateMetric metric in registered_metrics) {
+        metric.StartFixedUpdate();
+      }
       network?.Refresh();
     }
 
@@ -235,5 +242,6 @@ namespace σκοπός {
     private KSP.UI.Screens.ApplicationLauncherButton toolbar_button_;
 
     internal RuntimeMetrics runtimeMetrics_ = new RuntimeMetrics();
+    private readonly List<FixedUpdateMetric> registered_metrics = new List<FixedUpdateMetric>();
   }
 }
