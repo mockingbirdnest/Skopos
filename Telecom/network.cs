@@ -187,6 +187,8 @@ namespace σκοπός {
         Telecom.Log("No RA comm network");
         return;
       }
+      routing_.prefer_one_bounce = Telecom.Instance.prefer_one_bounce;
+      routing_.use_apsp_heuristic = Telecom.Instance.use_apsp_heuristic;
       routing_.Reset(
           from station in tx_only_ select station.Comm,
           from station in rx_only_ select station.Comm,

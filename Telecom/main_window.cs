@@ -8,6 +8,7 @@ namespace σκοπός {
 internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRenderer {
   public MainWindow(Telecom telecom) : base(telecom) {
     telecom_ = telecom;
+    stats_ = new RoutingStatistics(telecom);
   }
 
   public bool show_network { get; private set; } = false;
@@ -36,9 +37,19 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
       }
 
       using (new UnityEngine.GUILayout.HorizontalScope()) {
+        telecom_.network.routing_.prefer_one_bounce = telecom_.prefer_one_bounce = UnityEngine.GUILayout.Toggle(telecom_.prefer_one_bounce, "Prefer one-bounce connections");
+      }
+
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
+        telecom_.network.routing_.use_apsp_heuristic = telecom_.use_apsp_heuristic = UnityEngine.GUILayout.Toggle(telecom_.use_apsp_heuristic, "Use A* search with Floyd-Warshall heuristic");
+        // Why two separate locations? Because Routing needs a local copy for testing, but I can only preserve fields in Telecom. So Telecom's copy is authoritative, and it copies it over to Routing.
+        stats_.RenderButton();
+      }
+
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
         UnityEngine.GUILayout.Label($"Contracted connections: {telecom_.network.contracted_connections.Count}");
         UnityEngine.GUILayout.Label($"Fixed Updates: {telecom_.runtimeMetrics_.num_fixed_update_iterations_}");
-        UnityEngine.GUILayout.Label($"Average Runtime: {telecom_.runtimeMetrics_.AverageFixedUpdateRuntime:F2} ms");
+        UnityEngine.GUILayout.Label($"Average Total Runtime: {telecom_.runtimeMetrics_.AverageFixedUpdateRuntime:F2} ms");
       }
 
       var inspected_connections = connection_inspectors_.Keys.ToArray();
@@ -150,6 +161,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
     antenna_inspectors_;
 
   private Telecom telecom_;
+  private RoutingStatistics stats_;
   private string alert_rate_limit_text;
   private readonly Dictionary<Contracts.Contract, bool> open_contracts_ =
       new Dictionary<Contracts.Contract, bool>();

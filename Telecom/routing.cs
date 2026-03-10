@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using CommNet.Network;
 using RealAntennas;
 using static σκοπός.Routing.PointToMultipointAvailability;
 
@@ -128,6 +130,12 @@ namespace σκοπός {
 
   public Routing() {
     current_network_usage_ = new RoutingNetworkUsage(this);
+#if !DEBUG
+    Telecom.Instance.RegisterFixedUpdateMetric(one_hop_metric);
+    Telecom.Instance.RegisterFixedUpdateMetric(a_star_metric);
+    Telecom.Instance.RegisterFixedUpdateMetric(shortest_path_metric);
+    Telecom.Instance.RegisterFixedUpdateMetric(dijkstras_metric);
+#endif
   }
 
   public void Reset(IEnumerable<RACommNode> tx_only,
@@ -136,6 +144,7 @@ namespace σκοπός {
     OrientedLink.ReturnLinks(this);
     links_.Clear();
     current_network_usage_.Clear();
+    heuristic.InvalidateCache();
 
     tx_only_ = new HashSet<RACommNode>(tx_only);
     rx_only_ = new HashSet<RACommNode>(rx_only);
@@ -262,7 +271,30 @@ namespace σκοπός {
       double data_rate,
       NetworkUsage usage,
       out Channel[] channels) {
+    if (prefer_one_bounce && destinations.Count == 1) {
+      Channel ans;
+      if (FindChannelsOneHop(source, destinations[0], latency_limit, data_rate, usage, out ans) == PointToMultipointAvailability.Available) {
+        channels = new Channel[1] {ans};
+        return PointToMultipointAvailability.Available;
+      }
+    }
+    if (use_apsp_heuristic && destinations.Count == 1) {
+      channels = new Channel[1] {null};
+      return FindChannelsAPSP(source, destinations[0], latency_limit, data_rate, usage, out channels[0]);
+    }
+    return FindChannelsDijkstras(source, destinations, latency_limit, data_rate, usage, out channels);
+  }
+
+  private PointToMultipointAvailability FindChannelsDijkstras(
+      RACommNode source,
+      IList<RACommNode> destinations,
+      double latency_limit,
+      double data_rate,
+      NetworkUsage usage,
+      out Channel[] channels) {
+    dijkstras_metric.Start();
     const double c = 299792458;
+    double latency_distance = c * latency_limit;
     // TODO(egg): consider using the stock intrusive data structure.
     var distances = new Dictionary<RACommNode, double>();
     var previous = new Dictionary<RACommNode, OrientedLink>();
@@ -276,15 +308,19 @@ namespace σκοπός {
     int rx_found = 0;
     channels = new Channel[destinations.Count];
     bool is_point_to_multipoint = destinations.Count > 1;
+
+    double[] destination_distances = new double[destinations.Count];
+
+    for (int i = destinations.Count - 1; i >= 0; --i) {
+      destination_distances[i] = double.PositiveInfinity;
+    }
+
     while (boundary.TryDequeue(out RACommNode tx, out double tx_distance)) {
       if (tx_distance != distances[tx]) {
         // We have already considered `tx` through a shorter path.
         continue;
       }
-      if (tx_distance > latency_limit * c) {
-        // We have run out of latency, no need to keep searching.
-        return rx_found == 0 ? Unavailable : Partial;
-      } else if (destinations.Contains(tx)) {
+      if (destinations.Contains(tx)) {
         int i = destinations.IndexOf(tx);
         channels[i] = new Channel();
         for (OrientedLink link = previous[tx];
@@ -296,9 +332,14 @@ namespace σκοπός {
         channels[i].latency = tx_distance / c;
         ++rx_found;
         if (rx_found == channels.Length) {
+          dijkstras_metric.StopSuccess();
           return PointToMultipointAvailability.Available;
         }
-      }
+      } else if (tx_distance > latency_distance) {
+        // We have run out of latency, no need to keep searching.
+        dijkstras_metric.StopFailure();
+        return rx_found == 0 ? Unavailable : Partial;
+      } 
 
       interior.Add(tx);
 
@@ -313,22 +354,337 @@ namespace σκοπός {
           continue;
         }
 
-        var link = OrientedLink.Get(this, from: tx, to: rx);
-
-        if (link.max_data_rate < data_rate || link.CapacityWithUsage(usage) < data_rate) {
+        double tentative_distance = distances[tx] + (tx.precisePosition - rx.precisePosition).magnitude; 
+        if (tentative_distance > latency_distance || 
+            (distances.TryGetValue(rx, out double d) &&
+            tentative_distance > d)) { // Latency optimality check
           continue;
         }
 
-        double tentative_distance = tx_distance + link.length;
-        if (!distances.TryGetValue(rx, out double d) ||
-            tentative_distance < d) {
-          distances[rx] = tentative_distance;
-          previous[rx] = link;
-          boundary.Enqueue(rx, tentative_distance);
+        var link = OrientedLink.Get(this, from: tx, to: rx);
+        if (link.max_data_rate < data_rate) { // Best-case data rate check.
+          continue;
+        }
+        
+        if (!link.CheckCapacityWithUsage(usage, data_rate)) {
+          continue;
+        }
+        distances[rx] = tentative_distance;
+        previous[rx] = link;
+        boundary.Enqueue(rx, tentative_distance);
+        int ind = destinations.IndexOf(rx);
+        if (ind != -1) {
+          destination_distances[ind] = tentative_distance;
+          double worst_dist = destination_distances.Max();
+          if (latency_distance > worst_dist) latency_distance = worst_dist;
         }
       }
     }
+    dijkstras_metric.StopFailure();
     return rx_found == 0 ? Unavailable : Partial;
+  }
+
+  private PointToMultipointAvailability FindChannelsAPSP(
+      RACommNode source,
+      RACommNode destination,
+      double latency_limit,
+      double data_rate,
+      NetworkUsage usage,
+      out Channel channel) {
+    shortest_path_metric.Start();
+    if (TryShortestPath(source, destination, latency_limit, data_rate, usage, out Channel ans) == PointToMultipointAvailability.Available) {
+      channel = ans;
+      shortest_path_metric.StopSuccess();
+      return PointToMultipointAvailability.Available;
+    }
+    shortest_path_metric.StopFailure();
+    a_star_metric.Start();
+    const double c = 299792458;
+    double latency_distance = c * latency_limit;
+    // TODO(egg): consider using the stock intrusive data structure.
+    var distances = new Dictionary<RACommNode, double>();
+    var previous = new Dictionary<RACommNode, OrientedLink>();
+    var boundary = new PriorityQueue<RACommNode, double>();
+    var interior = new HashSet<RACommNode>();
+    a_star_metric.Pause();
+    heuristic.GenerateShortestPaths();
+    a_star_metric.Resume();
+    //var metrics = Telecom.Instance.runtimeMetrics_;
+    //metrics.apsp_routes++;
+    // Dijkstra’s algorithm without DecreaseKey.
+    distances[source] = heuristic.GetHeuristicDistance(source, destination);
+    //Telecom.Log($"{source.displayName} -> {destination.displayName} heuristic distance: {distances[source]}");
+    boundary.Enqueue(source, distances[source]);
+    previous[source] = null;
+    channel = new Channel();
+    while (boundary.TryDequeue(out RACommNode tx, out double tx_distance)) {
+      if (tx_distance != distances[tx]) {
+        // We have already considered `tx` through a shorter path.
+        continue;
+      }
+      if (destination == tx) {
+        for (OrientedLink link = previous[tx];
+             link != null;
+             link = previous[link.tx]) {
+           channel.links.Add(link);
+        }
+        channel.links.Reverse();
+        channel.latency = tx_distance / c;
+        a_star_metric.StopSuccess();
+        return PointToMultipointAvailability.Available;
+      } else if (tx_distance > latency_distance) {
+        // We have run out of latency, no need to keep searching.
+        channel = null;
+        a_star_metric.StopFailure();
+        return PointToMultipointAvailability.Unavailable;
+      } 
+
+      interior.Add(tx);
+
+      if (rx_only_.Contains(tx)) {
+        continue;
+      }
+
+      double tx_node_penalty = heuristic.GetHeuristicDistance(tx, destination);
+
+      foreach (var stock_rx in tx.Keys) {
+        var rx = (RACommNode)stock_rx;
+
+        if (tx_only_.Contains(rx) || interior.Contains(rx) || !heuristic.IsGoodNode(rx)) {
+          continue;
+        }
+
+        double tentative_distance = distances[tx] + (tx.precisePosition - rx.precisePosition).magnitude + heuristic.GetHeuristicDistance(rx, destination) - tx_node_penalty; 
+        if (tentative_distance > latency_distance || 
+            (distances.TryGetValue(rx, out double d) &&
+            tentative_distance > d)) { // Latency optimality check
+          continue;
+        }
+
+        var link = OrientedLink.Get(this, from: tx, to: rx);
+        if (link.max_data_rate < data_rate) { // Best-case data rate check.
+          continue;
+        }
+
+        if (!link.CheckCapacityWithUsage(usage, data_rate)) {
+          continue;
+        }
+        distances[rx] = tentative_distance;
+        previous[rx] = link;
+        boundary.Enqueue(rx, tentative_distance);
+        if (rx == destination) latency_distance = tentative_distance; // Don't consider any links with no chance of improving our current solution.
+        //metrics.apsp_links_considered++;
+      }
+    }
+    channel = null;
+    a_star_metric.StopFailure();
+    return PointToMultipointAvailability.Unavailable;
+  }
+
+  private PointToMultipointAvailability TryShortestPath(
+      RACommNode source,
+      RACommNode destination,
+      double latency_limit,
+      double data_rate,
+      NetworkUsage usage,
+      out Channel channel) {
+    const double c = 299792458;
+    double latency_distance = c * latency_limit;
+    shortest_path_metric.Pause();
+    heuristic.GenerateShortestPaths();
+    shortest_path_metric.Resume();
+    channel = new Channel();
+    double tx_distance = heuristic.GetHeuristicDistance(source, destination);
+    if (tx_distance > latency_distance) {
+      return PointToMultipointAvailability.Unavailable;
+    }
+    RACommNode prev = source;
+    var path = heuristic.BestRoute(source, destination);
+    
+    foreach (RACommNode node in path) {
+      var link = OrientedLink.Get(this, from: prev, to: node);
+      if (link.max_data_rate < data_rate) {
+        channel = null;
+        return PointToMultipointAvailability.Unavailable;
+      }
+      if (!link.CheckCapacityWithUsage(usage, data_rate)) {
+        channel = null;
+        return PointToMultipointAvailability.Unavailable;
+      }
+      channel.links.Add(link);
+      channel.latency = tx_distance / c;
+      prev = node;
+    }
+    return PointToMultipointAvailability.Available;
+  }
+
+  private PointToMultipointAvailability FindChannelsOneHop(
+      RACommNode source,
+      RACommNode destination,
+      double latency_limit,
+      double data_rate,
+      NetworkUsage usage,
+      out Channel channel) {
+    one_hop_metric.Start();
+    const double c = 299792458;
+    double latency_distance = c * latency_limit;
+    channel = new Channel();
+    double best_distance = latency_distance;
+    foreach (RACommNode relay in source.Keys) {
+      if (relay.TryGetValue(destination, out var outbound)) {
+        OrientedLink outbound_link = OrientedLink.Get(this, from: relay, to: destination);
+        if (outbound_link.max_data_rate < data_rate) {
+          continue;
+        }
+
+        OrientedLink inbound_link = OrientedLink.Get(this, from: source, to: relay);
+        if (inbound_link.max_data_rate < data_rate) {
+          continue;
+        }
+
+        double distance = outbound_link.length + inbound_link.length;
+        if (distance > best_distance) {
+          continue;
+        }
+
+        if (!outbound_link.CheckCapacityWithUsage(usage, data_rate)) {
+          continue;
+        }
+
+        if (!inbound_link.CheckCapacityWithUsage(usage, data_rate)) {
+          continue;
+        }
+
+        best_distance = distance;
+        channel.links.Clear();
+        channel.links.Add(inbound_link);
+        channel.links.Add(outbound_link);
+      }
+    }
+    if (best_distance < latency_distance) {
+      one_hop_metric.StopSuccess();
+      return PointToMultipointAvailability.Available;
+    } else {
+      channel = null;
+      one_hop_metric.StopFailure();
+      return PointToMultipointAvailability.Unavailable;
+    }
+  }
+
+  public class RoutingPrecompute {
+    // All-pairs shortest paths
+    //private ProfilerMarker profiler = new ProfilerMarker("Floyd-Warshall");
+
+    public RoutingPrecompute() {
+      Telecom.Instance.RegisterFixedUpdateMetric(apsp_metric);
+    }
+
+    public void FindNodes(double bandwidth_filter = 1e2) {
+      var home_body = FlightGlobals.GetHomeBody();
+      nodes.Clear();
+
+      ordering.Clear();
+
+      foreach (RACommNode node in (CommNet.CommNetNetwork.Instance?.CommNet as RACommNetwork).Nodes) {
+        if ((node.ParentBody == home_body || node.ParentVessel?.mainBody == home_body) && 
+            node.RAAntennaList.Any(ra => ra.RFBand.ChannelWidth >= bandwidth_filter)) {
+          // Only consider ground stations and vessels with a wideband antenna on them.
+          ordering[node] = nodes.Count;
+          nodes.Add(node);
+        }
+      }
+    }
+
+    public void OverrideNodes(List<RACommNode> nodes) {
+      this.nodes.Clear();
+      for (int i = 0; i < nodes.Count; ++i) {
+        this.nodes.Add(nodes[i]);
+        ordering[nodes[i]] = i;
+      }
+    }
+
+    public void GenerateShortestPaths(double minimum_link_data_rate = 1e2) {
+      if (cached) return;
+      apsp_metric.Start();
+      if (nodes.Count == 0) FindNodes();
+      //profiler.Begin();
+      
+      //Telecom.Log($"Found {nodes.Count} relevant stations and vessels.");
+
+      int N = nodes.Count;
+      shortest_path = new double[N, N];
+      path_forwardtrace = new int[N, N];
+      for (int i = N - 1; i >= 0; --i) {
+        for (int j = N - 1; j >= 0; --j) {
+          shortest_path[i, j] = double.PositiveInfinity;
+          path_forwardtrace[i, j] = -1;
+        }
+        shortest_path[i, i] = 0;
+        path_forwardtrace[i, i] = i;
+        var tx = nodes[i];
+        foreach (RACommNode rx in tx.Keys) {
+          if (ordering.TryGetValue(rx, out int j)) {
+            RACommLink ra_link = (RACommLink) tx[rx];
+            if (ra_link.a == tx && ra_link.FwdDataRate < minimum_link_data_rate) continue;
+            else if (ra_link.b == tx && ra_link.RevDataRate < minimum_link_data_rate) continue;
+            shortest_path[i, j] = (tx.precisePosition - rx.precisePosition).magnitude; 
+            path_forwardtrace[i, j] = j;
+          }
+        }
+      }
+      for (int k = N - 1; k >= 0; --k) {
+        for (int i = N - 1; i >= 0; --i) {
+          if (shortest_path[i, k] != double.PositiveInfinity) {
+            for (int j = N - 1; j >= 0; --j) {
+              if (shortest_path[k, j] != double.PositiveInfinity && shortest_path[i, j] > shortest_path[i, k] + shortest_path[k, j]) {
+                shortest_path[i, j] = shortest_path[i, k] + shortest_path[k, j];
+                path_forwardtrace[i, j] = path_forwardtrace[i, k];
+              }
+            }
+          }
+        }
+      }
+      cached = true;
+      //profiler.End();
+      apsp_metric.StopSuccess();
+    }
+    public double GetHeuristicDistance(RACommNode tx, RACommNode rx) {
+      if (ordering.TryGetValue(tx, out int i) && ordering.TryGetValue(rx, out int j)) {
+        return shortest_path[i, j];   
+      }
+      //Telecom.Log($"{tx.displayName} -> {rx.displayName} not in network!!");
+      return double.PositiveInfinity; // This is not in our "good" node network!
+    }
+
+    public bool IsGoodNode(RACommNode node) {
+      return ordering.ContainsKey(node);
+    }
+
+    public IEnumerable<RACommNode> BestRoute(RACommNode tx, RACommNode rx) {
+      // Skips yielding the first node (tx) for ease of implementation elsewhere.
+      if (ordering.TryGetValue(tx, out int i) && ordering.TryGetValue(rx, out int j) && path_forwardtrace[i, j] != -1) {
+        while (i != j) {
+          i = path_forwardtrace[i, j];
+          yield return nodes[i];
+        }
+      } 
+      yield break;
+    }
+
+    public void InvalidateCache() {
+      nodes.Clear();
+      ordering.Clear();
+      shortest_path = null;
+      path_forwardtrace = null;
+      cached = false;
+    }
+
+    private readonly Dictionary<RACommNode, int> ordering = new Dictionary<RACommNode, int>(256);
+    private readonly List<RACommNode> nodes = new List<RACommNode>();
+    private double[,] shortest_path;
+    private int[,] path_forwardtrace;
+    private bool cached = false;
+    internal FixedUpdateMetric apsp_metric = new FixedUpdateMetric("apsp");
   }
 
   private class LinkUsage {
@@ -458,7 +814,7 @@ namespace σκοπός {
     }
 
     private void EnsureSameTxAntennaAndTL(IEnumerable<OrientedLink> links) {
-#if DEBUG
+#if NEVER
       RealAntennaDigital tx_antenna = links.First().tx_antenna;
       var antennas = from link in links select link.tx_antenna;
       if (antennas.Any(tx => tx != tx_antenna)) {
@@ -534,15 +890,23 @@ namespace σκοπός {
     // TODO(egg): this needs to be adapted once we have support for landlines.
     public double length => (tx.precisePosition - rx.precisePosition).magnitude;
 
-    public double CapacityWithUsage(NetworkUsage usage) {
-      double available_spectrum =
-          band.ChannelWidth - Math.Max(usage.SpectrumUsage(tx_antenna),
-                                       usage.SpectrumUsage(rx_antenna));
-      double bandwidth_limited_data_rate =
-          Math.Min(max_symbol_rate_, available_spectrum) * bits_per_symbol_;
-      double power_limited_data_rate =
-          max_data_rate * (1 - usage.TxPowerUsage(tx_antenna));
-      return Math.Min(bandwidth_limited_data_rate, power_limited_data_rate);
+    public bool CheckCapacityWithUsage(NetworkUsage usage, double data_rate) {
+      // Tx power check.
+      if (max_data_rate * (1 - usage.TxPowerUsage(tx_antenna)) < data_rate) {
+        return false;
+      }
+
+      double max_used_data_rate = band.ChannelWidth * bits_per_symbol - data_rate;
+      // Rx bandwidth check.
+      if (usage.SpectrumUsage(rx_antenna) * bits_per_symbol > max_used_data_rate) {
+        return false;
+      }
+
+      // Tx bandwidth check.
+      if (usage.SpectrumUsage(tx_antenna) * bits_per_symbol > max_used_data_rate) {
+        return false;
+      }
+      return true;
     }
 
     public double TxPowerUsageFromDataRate(double data_rate) {
@@ -550,7 +914,7 @@ namespace σκοπός {
     }
 
     public double SpectrumUsageFromDataRate(double data_rate) {
-      return data_rate / (encoder.CodingRate * modulator.ModulationBits);
+      return data_rate / bits_per_symbol_;
     }
 
     private OrientedLink() { }
@@ -571,21 +935,24 @@ namespace σκοπός {
       routing_ = routing;
       if (ra_link != null) {
         bits_per_symbol_ = encoder.CodingRate * modulator.ModulationBits;
-        max_symbol_rate_ = max_data_rate / bits_per_symbol_;
       }
     }
 
-    private double max_symbol_rate_;
+    public double bits_per_symbol => bits_per_symbol_;
     private double bits_per_symbol_;
 
     private Routing routing_;
   }
 
+  public bool prefer_one_bounce = false;
+  
+  public bool use_apsp_heuristic = true;
+
   private readonly RoutingNetworkUsage current_network_usage_;
 
   private readonly Dictionary<(RACommNode, RACommNode), OrientedLink> links_ =
       new Dictionary<(RACommNode, RACommNode), OrientedLink>();
-
+  
   // Stations only capable of transmitting.
   private HashSet<RACommNode> tx_only_ = new HashSet<RACommNode>();
   // Station only capable of receiving.
@@ -594,6 +961,12 @@ namespace σκοπός {
   // so that each of its antennas really represents multiple independent
   // antennas.  Neither their transmitted power nor their spectrum get used up.
   private HashSet<RACommNode> multiple_tracking_ = new HashSet<RACommNode>();
+
+  public readonly RoutingPrecompute heuristic = new RoutingPrecompute();
+  internal FixedUpdateMetric one_hop_metric = new FixedUpdateMetric("one-hop");
+  internal FixedUpdateMetric a_star_metric = new FixedUpdateMetric("astar");
+  internal FixedUpdateMetric shortest_path_metric = new FixedUpdateMetric("shortest-path");
+  internal FixedUpdateMetric dijkstras_metric = new FixedUpdateMetric("dijkstras");
 }
 
 }
