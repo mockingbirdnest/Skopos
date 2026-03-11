@@ -8,6 +8,7 @@ namespace σκοπός {
 internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRenderer {
   public MainWindow(Telecom telecom) : base(telecom) {
     telecom_ = telecom;
+    vessel_overview_ = new VesselOverview(telecom);
   }
 
   public bool show_network { get; private set; } = false;
@@ -33,6 +34,10 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
         alert_rate_limit_text = UnityEngine.GUILayout.TextField(alert_rate_limit_text);
         double.TryParse(alert_rate_limit_text, out telecom_.max_alert_rate_in_days_);
         UnityEngine.GUILayout.Label($"days ({telecom_.max_alert_rate_in_days_})");
+      }
+
+      using (new UnityEngine.GUILayout.HorizontalScope()) {
+        vessel_overview_.RenderButton();
       }
 
       using (new UnityEngine.GUILayout.HorizontalScope()) {
@@ -150,6 +155,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
     antenna_inspectors_;
 
   private Telecom telecom_;
+  private VesselOverview vessel_overview_;
   private string alert_rate_limit_text;
   private readonly Dictionary<Contracts.Contract, bool> open_contracts_ =
       new Dictionary<Contracts.Contract, bool>();
