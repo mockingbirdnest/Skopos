@@ -1,11 +1,11 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using RealAntennas;
 using RealAntennas.MapUI;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Collections;
 using RealAntennas.Network;
 
 namespace σκοπός {
@@ -200,7 +200,8 @@ namespace σκοπός {
         ui.OverrideShownCones.Add(station);
       }
       foreach (Vessel vessel in FlightGlobals.Vessels) {
-        if (vessel?.connection?.Comm is RACommNode node) {
+        if (vessel?.connection?.Comm is RACommNode node &&
+            (main_window_.focused_vessel is null || node == main_window_.focused_vessel)) {
           ui.OverrideShownCones.Add(node);
         }
       }
@@ -208,7 +209,8 @@ namespace σκοπός {
         if (link.a is RACommNode node_a &&
             (node_a.ParentVessel != null || stations.Contains(node_a)) &&
             link.b is RACommNode node_b &&
-            (node_b.ParentVessel != null || stations.Contains(node_b))) {
+            (node_b.ParentVessel != null || stations.Contains(node_b)) &&
+            (main_window_.focused_vessel is null || node_a == main_window_.focused_vessel || node_b == main_window_.focused_vessel)) {
           ui.OverrideShownLinks.Add(link);
         }
       }

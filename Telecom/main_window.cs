@@ -28,16 +28,13 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
       using (new UnityEngine.GUILayout.HorizontalScope()) {
         show_network = UnityEngine.GUILayout.Toggle(show_network, "Show network");
         telecom_.stop_warp_in_sim_ = UnityEngine.GUILayout.Toggle(telecom_.stop_warp_in_sim_, "Alerts stop warp in RP-1 sim");
+        vessel_overview_.RenderButton();
       }
       using (new UnityEngine.GUILayout.HorizontalScope()) {
         UnityEngine.GUILayout.Label("Suppress duplicate SLA alerts within");
         alert_rate_limit_text = UnityEngine.GUILayout.TextField(alert_rate_limit_text);
         double.TryParse(alert_rate_limit_text, out telecom_.max_alert_rate_in_days_);
         UnityEngine.GUILayout.Label($"days ({telecom_.max_alert_rate_in_days_})");
-      }
-
-      using (new UnityEngine.GUILayout.HorizontalScope()) {
-        vessel_overview_.RenderButton();
       }
 
       using (new UnityEngine.GUILayout.HorizontalScope()) {
@@ -156,6 +153,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
 
   private Telecom telecom_;
   private VesselOverview vessel_overview_;
+  internal RACommNode focused_vessel;
   private string alert_rate_limit_text;
   private readonly Dictionary<Contracts.Contract, bool> open_contracts_ =
       new Dictionary<Contracts.Contract, bool>();
