@@ -8,6 +8,7 @@ namespace σκοπός {
 internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRenderer {
   public MainWindow(Telecom telecom) : base(telecom) {
     telecom_ = telecom;
+    vessel_overview_ = new VesselOverview(telecom);
   }
 
   public bool show_network { get; private set; } = false;
@@ -27,6 +28,7 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
       using (new UnityEngine.GUILayout.HorizontalScope()) {
         show_network = UnityEngine.GUILayout.Toggle(show_network, "Show network");
         telecom_.stop_warp_in_sim_ = UnityEngine.GUILayout.Toggle(telecom_.stop_warp_in_sim_, "Alerts stop warp in RP-1 sim");
+        vessel_overview_.RenderButton();
       }
       using (new UnityEngine.GUILayout.HorizontalScope()) {
         UnityEngine.GUILayout.Label("Suppress duplicate SLA alerts within");
@@ -150,6 +152,8 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
     antenna_inspectors_;
 
   private Telecom telecom_;
+  private VesselOverview vessel_overview_;
+  internal RACommNode focused_vessel;
   private string alert_rate_limit_text;
   private readonly Dictionary<Contracts.Contract, bool> open_contracts_ =
       new Dictionary<Contracts.Contract, bool>();
