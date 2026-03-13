@@ -176,8 +176,8 @@ namespace σκοπός {
         }
       }
       refresh_watch_.Stop();
-      metrics.num_fixed_update_iterations_++;
-      metrics.fixed_update_runtime_ = refresh_watch_.Elapsed.TotalMilliseconds;
+      metrics.num_iterations_++;
+      metrics.total_runtime_ = refresh_watch_.Elapsed.TotalMilliseconds;
       UnityEngine.Profiling.Profiler.EndSample();
     }
 
