@@ -48,6 +48,7 @@ namespace σκοπός {
       Log("Starting");
       enabled = false;
       GameEvents.CommNet.OnNetworkInitialized.Add(NetworkInitializedNotify);
+      GameEvents.CommNet.OnNetworkInitialized.Add(AddPostUpdateHandler);
       GameEvents.Contract.onContractsLoaded.Add(NotifyContractsLoaded);
       StartCoroutine(CreateNetwork());
     }
@@ -66,6 +67,17 @@ namespace σκοπός {
 
     private void NetworkInitializedNotify() {
       Log("CommNet Network Initialization fired.");
+    }
+
+    private void AddPostUpdateHandler() {
+      ((RACommNetwork) RACommNetNetwork.Instance.CommNet).NetworkUpdateComplete.Add(PostUpdateHandler);
+    }
+
+    private void PostUpdateHandler() {
+      if ( ((RACommNetwork) RACommNetNetwork.Instance.CommNet).LastUpdateUT > last_update_ut_) {
+        do_refresh_ = true;
+        last_update_ut_ = ((RACommNetwork) RACommNetNetwork.Instance.CommNet).LastUpdateUT;
+      }
     }
 
     private IEnumerator CreateNetwork() {
@@ -180,7 +192,11 @@ namespace σκοπός {
         // Time does not advance in the VAB, but after a revert, it is incorrectly stuck in the past.
         ut_ = Planetarium.GetUniversalTime();
       }
-      network?.Refresh();
+      
+      if (do_refresh_) {
+        do_refresh_ = false; // Unset now so that it can reset if RA updates while we're working.
+        network?.Refresh();
+      }
     }
 
     private void LateUpdate() {
@@ -231,5 +247,7 @@ namespace σκοπός {
     private KSP.UI.Screens.ApplicationLauncherButton toolbar_button_;
 
     internal RuntimeMetrics runtimeMetrics_ = new RuntimeMetrics();
+    internal bool do_refresh_ = false;
+    private double last_update_ut_;
   }
 }
