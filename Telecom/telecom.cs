@@ -71,7 +71,7 @@ namespace σκοπός {
 
     private void AddPostUpdateHandler() {
       ((RACommNetwork) RACommNetNetwork.Instance.CommNet).NetworkUpdateComplete.Add(PostUpdateHandler);
-      }
+    }
 
     private void PostUpdateHandler() {
       if ( ((RACommNetwork) RACommNetNetwork.Instance.CommNet).LastUpdateUT > last_update_ut) {
