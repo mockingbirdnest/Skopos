@@ -37,8 +37,8 @@ internal class MainWindow : principia.ksp_plugin_adapter.SupervisedWindowRendere
 
       using (new UnityEngine.GUILayout.HorizontalScope()) {
         UnityEngine.GUILayout.Label($"Contracted connections: {telecom_.network.contracted_connections.Count}");
-        UnityEngine.GUILayout.Label($"Fixed Updates: {telecom_.runtimeMetrics_.num_fixed_update_iterations_}");
-        UnityEngine.GUILayout.Label($"Average Runtime: {telecom_.runtimeMetrics_.AverageFixedUpdateRuntime:F2} ms");
+        UnityEngine.GUILayout.Label($"Total Runs: {telecom_.runtimeMetrics_.num_iterations_}");
+        UnityEngine.GUILayout.Label($"Average Total Runtime: {telecom_.runtimeMetrics_.AverageRefreshRuntime:F2} ms");
       }
 
       var inspected_connections = connection_inspectors_.Keys.ToArray();
