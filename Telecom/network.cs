@@ -6,22 +6,34 @@ using System.Linq;
 
 namespace σκοπός {
   public class Network {
-    static ConfigNode GetStationDefinition(string name) {
+    public static ConfigNode GetStationDefinition(string name) {
+      if (station_definition_cache_.ContainsKey(name)) {
+        return station_definition_cache_[name];
+      } else {
       foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
         foreach (var definition in block.config.GetNodes("station")) {
-          if (definition.GetValue("name") == name) {
-            return definition;
+            var station_name = definition.GetValue("name");
+            station_definition_cache_[station_name] = definition;
+            if (station_name == name) {
+              return definition;
+            }
           }
         }
       }
       throw new KeyNotFoundException($"No definition for station {name}");
     }
 
-    static ConfigNode GetConnectionDefinition(string name) {
+    public static ConfigNode GetConnectionDefinition(string name) {
+      if (connection_definition_cache_.ContainsKey(name)) {
+        return connection_definition_cache_[name];
+      } else {
       foreach (var block in GameDatabase.Instance.GetConfigs("skopos_telecom")) {
         foreach (var definition in block.config.GetNodes("connection")) {
-          if (definition.GetValue("name") == name) {
-            return definition;
+            var connection_name = definition.GetValue("name");
+            connection_definition_cache_[connection_name] = definition;
+            if (connection_name == name) {
+              return definition;
+            }
           }
         }
       }
@@ -226,8 +238,18 @@ namespace σκοπός {
       }
     }
 
+    public Connection GetConnectionSafe(string name) {
+      if (!connections_.TryGetValue(name, out var connection)) {
+        return null;
+      }
+      return connection;
+    }
+
     public RACommNetHome GetStation(string name) {
-      return stations_[name];
+      if (!stations_.TryGetValue(name, out var station)) {
+        return null;
+      }
+      return station;
     }
 
     public IEnumerable<RACommNetHome> AllGround() {
@@ -245,6 +267,10 @@ namespace σκοπός {
     public readonly HashSet<RACommNetHome> rx_only_ = new HashSet<RACommNetHome>();
     public string[] names_ = { };
     public Routing routing_ = new Routing();
+
+    private static readonly Dictionary<string, ConfigNode> station_definition_cache_ = new Dictionary<string, ConfigNode>();
+    private static readonly Dictionary<string, ConfigNode> connection_definition_cache_ = new Dictionary<string, ConfigNode>(); 
+    // purposefully don't save these two, we want these to invalidate on game relaunch
 
     public Dictionary<Contracts.Contract, List<Connection>> connections_by_contract  { get; } =
         new Dictionary<Contracts.Contract, List<Connection>>();

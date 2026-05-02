@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using ContractConfigurator;
+using ContractConfigurator.Parameters;
 using Contracts;
 using RealAntennas;
 
@@ -46,7 +48,7 @@ namespace σκοπός {
     }
   }
 
-  public class BroadcastRxAvailability : ContractParameter {
+  public class BroadcastRxAvailability : ContractConfiguratorParameter {
     public BroadcastRxAvailability(Service service,
                                    AvailabilityMetric metric,
                                    Monitor monitor,
@@ -72,20 +74,20 @@ namespace σκοπός {
         return;
       }
       if (metric_.partial) {
-        SetIncomplete();
+        SetState(ParameterState.Incomplete);
       } else if (metric_.availability < availability_) {
         if (goal_ == ConnectionAvailability.Goal.MAINTAIN) {
-          SetFailed();
+          SetState(ParameterState.Failed);
         } else {
-          SetIncomplete();
+          SetState(ParameterState.Incomplete);
         }
       } else {
-        SetComplete();
+        SetState(ParameterState.Complete);
       }
       GetTitle();
     }
 
-    protected override string GetTitle() {
+    protected override string GetParameterTitle() {
       string status = service_.available
           ? "Currently connected"
           : "Currently disconnected";
@@ -100,6 +102,9 @@ namespace σκοπός {
       return title;
     }
 
+    protected override void OnParameterLoad(ConfigNode node) { }
+    protected override void OnParameterSave(ConfigNode node) { }
+
     private Service service_;
     private AvailabilityMetric metric_;
     private Monitor monitor_;
@@ -110,7 +115,7 @@ namespace σκοπός {
     private TitleTracker title_tracker_;
   }
 
-  public class ConnectionAvailability : ContractParameter {
+  public class ConnectionAvailability : ContractConfiguratorParameter {
     public enum Goal {
       ACHIEVE,
       MAINTAIN,
@@ -136,6 +141,19 @@ namespace σκοπός {
       monitoring_definition_ = monitoring_definition;
     }
 
+    private static string ForceGetStationName(string name) {
+      // Gets the station's readable name, even if it isn't in the network yet. **Can be very slow!!**
+      // Attempt, in order:
+      // - Get from the active Network
+      // - Read from config
+      if (Telecom.Instance.network.GetStation(name) is RealAntennas.Network.RACommNetHome home) {
+        return home.displaynodeName;
+      } else {
+        return Network.GetStationDefinition(name).GetValue("objectName");
+        // This was pretty bad before caching Station definitions.
+      }
+    }
+
     protected override void OnUpdate() {
       base.OnUpdate();
       if (goal_ == Goal.MAINTAIN) {
@@ -149,32 +167,32 @@ namespace σκοπός {
           any_incomplete |= subparameter.State == ParameterState.Incomplete;
         }
         if (any_failed) {
-          SetFailed();
+          SetState(ParameterState.Failed);
         } else if (any_incomplete) {
-          SetIncomplete();
+          SetState(ParameterState.Incomplete);
         } else {
-          SetComplete();
+          SetState(ParameterState.Complete);
         }
       } else {
         if (state == ParameterState.Failed) {
           return;
         }
         if (metric.partial) {
-          SetIncomplete();
+          SetState(ParameterState.Incomplete);
         } else if (metric.availability < availability_) {
           if (goal_ == Goal.MAINTAIN) {
-            SetFailed();
+            SetState(ParameterState.Failed);
           } else {
-            SetIncomplete();
+            SetState(ParameterState.Incomplete);
           }
         } else {
-          SetComplete();
+          SetState(ParameterState.Complete);
         }
       }
-      GetTitle();
+      GetParameterTitle();
     }
 
-    protected override void OnLoad(ConfigNode node) {
+    protected override void OnParameterLoad(ConfigNode node) {
       connection_ = node.GetValue("connection");
       availability_ = double.Parse(node.GetValue("availability"));
       latency_ = node.HasValue("latency")
@@ -189,9 +207,11 @@ namespace σκοπός {
       }
       metric_definition_ = node.GetNode("metric");
       monitoring_definition_ = node.GetNode("monitoring");
+      preview_string_ = node.HasValue("preview")
+        ? node.GetValue("preview") : null;
     }
 
-    protected override void OnSave(ConfigNode node) {
+    protected override void OnParameterSave(ConfigNode node) {
       node.AddValue("connection", connection_);
       node.AddValue("availability", availability_);
       if (latency_ != null) {
@@ -200,9 +220,10 @@ namespace σκοπός {
       node.AddValue("goal", goal_);
       node.AddNode("metric", metric_definition_);
       node.AddNode("monitoring", monitoring_definition_);
+      node.AddValue("preview", preview_string);
     }
 
-    protected override string GetTitle() {
+    protected override string GetParameterTitle() {
       var connection = Telecom.Instance.network.GetConnection(connection_);
       string data_rate = RATools.PrettyPrintDataRate(connection.data_rate);
       double latency = latency_ ?? connection.latency_limit;
@@ -254,6 +275,11 @@ namespace σκοπός {
       }
       last_title_ = title;
       return title;
+    }
+
+    protected override string GetParameterTitlePreview(out bool hideChildren) {
+      hideChildren = false;
+      return preview_string;
     }
 
     private AvailabilityMetric MakeMetric(ConfigNode definition) {
@@ -403,6 +429,69 @@ namespace σκοπός {
       }
     }
 
+    private string preview_string { 
+      get { 
+        if (!(preview_string_ is null)) {
+          return preview_string_;
+        }
+        //if (goal_ == Goal.MAINTAIN) {
+        //  return null; // Don't bother generating for maintenance contracts
+        //}
+        
+        // We need a couple things to preview the connection, and they should ideally never change.
+        
+        double data_rate;
+        double latency;
+        string tx = null;
+        string[] rxs = null;
+        string[] trxs = null;
+
+        if (Telecom.Instance.network.GetConnectionSafe(connection_) is Connection connection) {
+          // The sane option.
+          data_rate = connection.data_rate;
+          latency = connection.latency_limit;
+          if (connection is PointToMultipointConnection point_to_multipoint) {
+            tx = point_to_multipoint.tx_name;
+            rxs = point_to_multipoint.rx_names;
+          } else if (connection is DuplexConnection duplex) {
+            trxs = duplex.trx_names;
+          }
+        } else {
+          // The stupid option.
+          ConfigNode conn = Network.GetConnectionDefinition(connection_);
+          data_rate = double.Parse(conn.GetValue("rate"));
+          latency = latency_ ?? double.Parse(conn.GetValue("latency"));
+          if (conn.HasValue("tx")) {
+            tx = conn.GetValue("tx");
+            rxs = conn.GetValues("rx");
+          } else {
+            trxs = conn.GetValues("trx");
+          }
+        }
+        string pretty_rate = RATools.PrettyPrintDataRate(data_rate);
+        string pretty_latency = latency >= 1 ? $"{latency} s" : $"{latency * 1000} ms";
+
+        if (!(tx is null)) {
+          if (rxs.Length > 1) {
+            return $"Support broadcast from {ForceGetStationName(tx)} to " + 
+                $"{string.Join(", ", rxs.Take(rxs.Length - 1).Select(rx => ForceGetStationName(rx)))}" + 
+                $" and {ForceGetStationName(rxs[rxs.Length - 1])}, with a data rate of {pretty_rate} and a " +
+                $"latency of at most {pretty_latency}. Target availability: {availability_:P2}";
+            // Don't add subparameters just for preview purposes, we'll just list them out instead.
+          } else {
+            return $"Support transmission from {ForceGetStationName(tx)} to " +
+                $"{ForceGetStationName(rxs[0])}, with a data rate of {pretty_rate} and a " +
+                $"latency of at most {pretty_latency}. Target availability: {availability_:P2}";
+          }
+        } else {
+          return $"Support duplex communication between {ForceGetStationName(trxs[0])} " +
+              $"and {ForceGetStationName(trxs[1])}, with a one-way data rate of " +
+              $"{pretty_rate} and a round-trip latency of at most " +
+              $"{pretty_latency}. Target availability: {availability_:P2}";
+        }
+      }
+    }
+
     public string connection_name => connection_;
 
     private List<BroadcastRxAvailability> subparameters_;
@@ -416,5 +505,6 @@ namespace σκοπός {
     private Goal goal_;
     private string last_title_;
     private TitleTracker title_tracker_;
+    private string preview_string_;
   }
 }
