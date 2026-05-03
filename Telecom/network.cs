@@ -191,6 +191,7 @@ namespace σκοπός {
           from station in tx_only_ select station.Comm,
           from station in rx_only_ select station.Comm,
           from station in stations_.Values select station.Comm);
+      partioner_.DiscoverPartitions(network.Nodes);
       foreach (var connection in connections_.Values) {
         if (contracted_connections.Contains(connection)) {
           connection.AttemptConnection(routing_, this, Telecom.Instance.last_universal_time);
@@ -245,6 +246,7 @@ namespace σκοπός {
     public readonly HashSet<RACommNetHome> rx_only_ = new HashSet<RACommNetHome>();
     public string[] names_ = { };
     public Routing routing_ = new Routing();
+    public readonly NetworkPartitioner partioner_ = new NetworkPartitioner();
 
     public Dictionary<Contracts.Contract, List<Connection>> connections_by_contract  { get; } =
         new Dictionary<Contracts.Contract, List<Connection>>();

@@ -49,12 +49,12 @@ namespace σκοπός {
         circuit = routing.FindAndUseAvailableCircuit(
             network.GetStation(trx_names[0]).Comm,
             network.GetStation(trx_names[1]).Comm,
-            latency_limit, data_rate, this);
+            latency_limit, data_rate, network.partioner_, this);
       } else {
         circuit = routing.FindCircuitInIsolation(
             network.GetStation(trx_names[0]).Comm,
             network.GetStation(trx_names[1]).Comm,
-            latency_limit, data_rate);
+            latency_limit, data_rate, network.partioner_);
       }
       basic_service.ReportAvailability(circuit != null, t);
       actual_latency = circuit?.round_trip_latency;
@@ -127,10 +127,10 @@ namespace σκοπός {
       Routing.Channel[] channels;
       if (exclusive) {
         routing.FindAndUseAvailableChannels(
-            tx, rx, latency_limit, data_rate, out channels, this);
+            tx, rx, latency_limit, data_rate, network.partioner_, out channels, this);
       } else {
         routing.FindChannelsInIsolation(
-            tx, rx, latency_limit, data_rate, out channels);
+            tx, rx, latency_limit, data_rate, network.partioner_, out channels);
       }
       for (int i = 0; i < channels.Length; ++i) {
         Routing.Channel channel = channels[i];

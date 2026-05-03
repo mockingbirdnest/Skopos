@@ -86,11 +86,13 @@ public class RoutingTest {
     MakeLink(w, x, 20e6, 1e6);
     MakeLink(w, y, 1e6, 20e6);
     MakeLink(x, y, 20e6, 1e6);
+    partitioner_.DiscoverPartitions(new[] {v, w, x, y});
     // We cannot get a circuit at 20 Mbps.
     Assert.IsNull(routing_.FindAndUseAvailableCircuit(
         v, w,
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 20e6,
+        partitioner_,
         connection: null));
 
     // But we could have simplex at 20 Mbps.
@@ -100,6 +102,7 @@ public class RoutingTest {
                                          destinations: new[] {w},
                                          latency_limit: double.PositiveInfinity,
                                          data_rate: 20e6,
+                                         partitioner_,
                                          out Routing.Channel[] v_w));
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Available,
@@ -107,6 +110,7 @@ public class RoutingTest {
                                          destinations: new[] {v},
                                          latency_limit: double.PositiveInfinity,
                                          data_rate: 20e6,
+                                         partitioner_,
                                          out Routing.Channel[] w_v));
     CollectionAssert.AreEqual(new[]{x, y, w}, v_w[0].ReceivingStations());
     CollectionAssert.AreEqual(new[]{x, y, v}, w_v[0].ReceivingStations());
@@ -116,6 +120,7 @@ public class RoutingTest {
         v, w,
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 10e6,
+        partitioner_,
         connection: null);
     Assert.IsNotNull(circuit);
     CollectionAssert.AreEqual(new[]{x, y, w},
@@ -167,12 +172,14 @@ public class RoutingTest {
     var y = MakeNode("y", 0, +1);
     MakeLink(v, x, 10e6, 0);
     MakeLink(v, y, 1e6, 0);
+    partitioner_.DiscoverPartitions(new[] {v, x, y});
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Available,
         routing_.FindAndUseAvailableChannels(source: v,
                                 destinations: new[] {x, y},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 500e3,
+                                partitioner_,
                                 out Routing.Channel[] channels,
                                 connection: null));
     CollectionAssert.AllItemsAreNotNull(channels);
@@ -185,6 +192,7 @@ public class RoutingTest {
                                 destinations: new[] {x, y},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 8e6,
+                                partitioner_,
                                 out channels,
                                 connection: null));
     // Another 500 kbps to x only costs us 5% of our power.
@@ -194,6 +202,7 @@ public class RoutingTest {
                                 destinations: new[] {x},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 500e3,
+                                partitioner_,
                                 out channels,
                                 connection: null));
     CollectionAssert.AllItemsAreNotNull(channels);
@@ -205,6 +214,7 @@ public class RoutingTest {
                                 destinations: new[] {x, y},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 4.5e6,
+                                partitioner_,
                                 out channels,
                                 connection: null));
     Assert.IsNotNull(channels[0]);
@@ -236,12 +246,14 @@ public class RoutingTest {
     MakeLink(v, w, 1e6, 0);
     MakeLink(w, x, 1e6, 0);
     MakeLink(w, y, 1e6, 0);
+    partitioner_.DiscoverPartitions(new[] {v, w, x, y});
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Available,
         routing_.FindAndUseAvailableChannels(source: v,
                                 destinations: new[] {x, y},
                                 latency_limit: double.PositiveInfinity,
                                 data_rate: 1e6,
+                                partitioner_,
                                 out Routing.Channel[] channels,
                                 connection: null));
     Assert.AreEqual(
@@ -273,11 +285,13 @@ public class RoutingTest {
     MakeLink(v, w, 300, 300);
     MakeLink(v, x, 10e6, 10e6);
     MakeLink(w, x, 10e6, 10e6);
+    partitioner_.DiscoverPartitions(new[] {v, w, x});
     Routing.Circuit low_latency_circuit = routing_.FindCircuitInIsolation(
         source: v,
         destination: w,
         round_trip_latency_limit: 1e-3,
-        one_way_data_rate: 110);
+        one_way_data_rate: 110,
+        partitioner_);
     Assert.IsNotNull(low_latency_circuit);
     CollectionAssert.AreEqual(new[]{w},
                               low_latency_circuit.forward.ReceivingStations());
@@ -287,12 +301,14 @@ public class RoutingTest {
         source: v,
         destination: w,
         round_trip_latency_limit: 400e-3,
-        one_way_data_rate: 1e6));
+        one_way_data_rate: 1e6,
+        partitioner_));
     Routing.Circuit high_bandwidth_circuit = routing_.FindCircuitInIsolation(
         source: v,
         destination: w,
         round_trip_latency_limit: 500e-3,
-        one_way_data_rate: 1e6);
+        one_way_data_rate: 1e6,
+        partitioner_);
     Assert.IsNotNull(high_bandwidth_circuit);
     CollectionAssert.AreEqual(
         new[]{x, w},
@@ -326,12 +342,14 @@ public class RoutingTest {
     MakeLink(x, t, 10e6, 10e6);
     MakeLink(t, z, 10e6, 10e6);
     MakeLink(z, u, 10e6, 10e6);
+    partitioner_.DiscoverPartitions(new[] {x, y, z, t, u});
     Assert.AreEqual(
         Routing.PointToMultipointAvailability.Available,
         routing_.FindChannelsInIsolation(source: x,
                                          destinations: new[] {u},
                                          latency_limit: double.PositiveInfinity,
                                          data_rate: 10e6,
+                                         partitioner_,
                                          out Routing.Channel[] x_u));
     CollectionAssert.AreEqual(new[]{y, z, u},
                               x_u[0].ReceivingStations());
@@ -354,11 +372,13 @@ public class RoutingTest {
     MakeLink(w, y, 10e6, 10e6);
     MakeLink(w, z, 10e6, 10e6);
     MakeLink(x, y, 10e6, 10e6);
+    partitioner_.DiscoverPartitions(new[] {v, w, x, y, z});
     Routing.Circuit low_latency_circuit = routing_.FindAndUseAvailableCircuit(
         source: v,
         destination: w,
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 5e6,
+        partitioner_,
         connection: null);
     Assert.IsNotNull(low_latency_circuit);
     CollectionAssert.AreEqual(
@@ -372,6 +392,7 @@ public class RoutingTest {
         destination: w,
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 5e6,
+        partitioner_,
         connection: null);
     Assert.IsNotNull(high_latency_circuit);
     CollectionAssert.AreEqual(
@@ -385,7 +406,8 @@ public class RoutingTest {
         source: v,
         destination: w,
         round_trip_latency_limit: double.PositiveInfinity,
-        one_way_data_rate: 10e6);
+        one_way_data_rate: 10e6,
+        partitioner_);
     Assert.IsNotNull(mixed_latency_circuit);
     CollectionAssert.AreEqual(
         new[]{x, y, w},
@@ -408,11 +430,13 @@ public class RoutingTest {
     MakeLink(v, x, 4e9, 4e9);
     MakeLink(v, y, 4e9, 4e9);
     MakeLink(v, z, 4e9, 4e9);
+    partitioner_.DiscoverPartitions(new[] {v, w, x, y, z});
     Assert.IsNotNull(routing_.FindAndUseAvailableCircuit(
         source: w,
         destination: v,
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 1e9,
+        partitioner_,
         connection: null));
     Assert.AreEqual(0.25, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
     Assert.AreEqual(2e9, routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
@@ -421,6 +445,7 @@ public class RoutingTest {
         destination: v,
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 1e9,
+        partitioner_,
         connection: null));
     Assert.AreEqual(0.5, routing_.usage.TxPowerUsage(v.FirstDigitalAntenna()));
     Assert.AreEqual(4e9, routing_.usage.SpectrumUsage(v.FirstDigitalAntenna()));
@@ -431,6 +456,7 @@ public class RoutingTest {
         destination: v,
         round_trip_latency_limit: double.PositiveInfinity,
         one_way_data_rate: 1e9,
+        partitioner_,
         connection: null));
   }
 
@@ -474,5 +500,6 @@ public class RoutingTest {
   }
 
   private Routing routing_ = new Routing();
+  private NetworkPartitioner partitioner_ = new NetworkPartitioner();
 }
 }
